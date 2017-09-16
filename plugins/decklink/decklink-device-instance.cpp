@@ -9,10 +9,10 @@
 #define LOG(level, message, ...) blog(level, "%s: " message, \
 		obs_source_get_name(this->decklink->GetSource()), ##__VA_ARGS__)
 
-#ifdef __APPLE__
-#define IS_MAC 1
+#ifdef _WIN32
+#define IS_WIN 1
 #else
-#define IS_MAC 0
+#define IS_WIN 0
 #endif
 
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
@@ -99,14 +99,14 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 	currentPacket.timestamp   = timestamp;
 
 	int maxdevicechannel = device->GetMaxChannel();
-	bool isMac = IS_MAC;
+	bool isWin = IS_WIN;
 
 	if ((channelFormat != SPEAKERS_UNKNOWN) && (channelFormat != SPEAKERS_MONO)
 			&& (channelFormat != SPEAKERS_STEREO) &&
 			(channelFormat != SPEAKERS_2POINT1) &&
 			(channelFormat != SPEAKERS_OCTAGONAL) &&
 			(channelFormat != SPEAKERS_HEXADECAGONAL) &&
-			(maxdevicechannel >= 8) && (!isMac)) {
+			(maxdevicechannel >= 8) && (isWin)) {
 		if (audioRepacker->repack((uint8_t *)bytes, frameCount) < 0) {
 			LOG(LOG_ERROR, "Failed to convert audio packet data");
 			return;
@@ -234,7 +234,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 	currentPacket.speakers = channelFormat;
 
 	int maxdevicechannel = device->GetMaxChannel();
-	bool isMac = IS_MAC;
+	bool isWin = IS_WIN;
 
 	if (channelFormat != SPEAKERS_UNKNOWN) {
 		const int channel = ConvertChannelFormat(channelFormat);
@@ -250,7 +250,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 			(channelFormat != SPEAKERS_2POINT1) &&
 			(channelFormat != SPEAKERS_OCTAGONAL) &&
 			(channelFormat != SPEAKERS_HEXADECAGONAL) &&
-			(maxdevicechannel >= 8) && (!isMac)) {
+			(maxdevicechannel >= 8) && (isWin)) {
 
 			const audio_repack_mode_t repack_mode = ConvertRepackFormat
 					(channelFormat);

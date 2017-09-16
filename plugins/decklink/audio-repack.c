@@ -61,13 +61,8 @@ int repack_squash_swap(struct audio_repack *repack,
 	while (src != esrc) {
 		__m128i target = _mm_load_si128(src++);
 		__m128i buf = _mm_shufflelo_epi16(target, _MM_SHUFFLE(2, 3, 1, 0));
-		#ifdef _WIN32
 		__m128i buf2 = _mm_shufflehi_epi16(buf, _MM_SHUFFLE(1, 0, 3, 2));
 		_mm_storeu_si128((__m128i *)dst, buf2);
-		#elif  __linux__
-		__m128i buf2 = _mm_shuffle_epi32(buf, _MM_SHUFFLE(1, 3, 2, 0));
-		_mm_storeu_si128((__m128i *)dst, buf2);
-		#endif
 		dst += 8 - squash;
 	}
 
