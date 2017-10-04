@@ -3523,11 +3523,14 @@ void OBSBasicSettings::MultichannelToggled(bool state)
 		ui->channelSetup->addItem("4.1");
 		ui->channelSetup->addItem("5.1");
 		ui->channelSetup->addItem("7.1");
-        #ifdef _WIN32
+        ui->channelSetup->addItem("8.0");
+        #ifndef _WIN32
         /* speaker layout is detected by OBS through channel count on linux and osx;
          * therefore 7.1 and 8.0 can not be distinguished as yet except on windows.
          */
-		ui->channelSetup->addItem("8.0");
+        QStandardItemModel* model = qobject_cast<QStandardItemModel*>(ui->channelSetup->model());
+        QStandardItem* item_octagonal= model->item(7);
+        item_octagonal->setFlags(item_octagonal->flags() & ~Qt::ItemIsEnabled);
         #endif
 		ui->channelSetup->addItem("16.0");
 		ui->audioMsg->setText(QTStr("Basic.Settings.Audio.MultichannelWarning"));
