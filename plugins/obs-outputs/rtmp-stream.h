@@ -86,6 +86,13 @@ struct rtmp_stream {
 	size_t           droptest_size;
 #endif
 
+	/* dynamic variable bitrate variables */
+	int              dynamic_bitrate;
+	int              initial_bitrate;
+	bool             switch_variable_bitrate;
+	uint64_t         last_adjustment_time;
+	float            last_congestion;
+
 	RTMP             rtmp;
 
 	bool             new_socket_loop;
