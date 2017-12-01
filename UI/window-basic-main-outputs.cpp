@@ -393,6 +393,9 @@ void SimpleOutput::Update()
 			"UseAdvanced");
 	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
 			"EnforceBitrate");
+	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
+			"DynamicBitrate");
+
 	const char *custom = config_get_string(main->Config(),
 			"SimpleOutput", "x264Settings");
 	const char *encoder = config_get_string(main->Config(), "SimpleOutput",
@@ -422,6 +425,7 @@ void SimpleOutput::Update()
 	if (advanced) {
 		obs_data_set_string(h264Settings, "preset", preset);
 		obs_data_set_string(h264Settings, "x264opts", custom);
+		obs_data_set_bool(h264Settings, "DynamicBitrate", dynamicBitrate);
 	}
 
 	obs_data_set_string(aacSettings, "rate_control", "CBR");
@@ -736,6 +740,18 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 			"NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
+	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
+			"DynamicBitrate");
+	int dynamicBitrateDown = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateDown");
+	int dynamicBitrateUp = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateUp");
+	int dynamicBitrateThreshold = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateThreshold");
+	int dynamicBitrateRecoveryTime = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateRecoveryTime");
+	int dynamicBitrateDecreaseTime = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateDecreaseTime");
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
@@ -743,6 +759,13 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 			enableNewSocketLoop);
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
+	obs_data_set_bool(settings, "DynamicBitrate", dynamicBitrate);
+	obs_data_set_int(settings, "DynamicBitrateDown", dynamicBitrateDown);
+	obs_data_set_int(settings, "DynamicBitrateUp", dynamicBitrateUp);
+	obs_data_set_int(settings, "DynamicBitrateThreshold", dynamicBitrateThreshold);
+	obs_data_set_int(settings, "DynamicBitrateRecoveryTime", dynamicBitrateRecoveryTime);
+	obs_data_set_int(settings, "DynamicBitrateDecreaseTime", dynamicBitrateDecreaseTime);
+
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);
 
@@ -1506,6 +1529,18 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			"NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
+	bool dynamicBitrate = config_get_bool(main->Config(), "AdvOut",
+			"DynamicBitrate");
+	int dynamicBitrateDown = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateDown");
+	int dynamicBitrateUp = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateUp");
+	int dynamicBitrateThreshold = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateThreshold");
+	int dynamicBitrateRecoveryTime = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateRecoveryTime");
+	int dynamicBitrateDecreaseTime = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateDecreaseTime");
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
@@ -1513,6 +1548,16 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			enableNewSocketLoop);
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
+	obs_data_set_bool(settings, "DynamicBitrate", dynamicBitrate);
+	obs_data_set_int(settings, "DynamicBitrateDown", dynamicBitrateDown);
+	obs_data_set_int(settings, "DynamicBitrateUp", dynamicBitrateUp);
+	obs_data_set_int(settings, "DynamicBitrateThreshold",
+			dynamicBitrateThreshold);
+	obs_data_set_int(settings, "DynamicBitrateRecoveryTime",
+			dynamicBitrateRecoveryTime);
+	obs_data_set_int(settings, "DynamicBitrateDecreaseTime",
+			dynamicBitrateDecreaseTime);
+
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);
 
