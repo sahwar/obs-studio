@@ -55,6 +55,7 @@ struct mp_media {
 	char *format_name;
 	int buffering;
 	int speed;
+	char *input_options;
 
 	enum AVPixelFormat scale_format;
 	struct SwsContext *swscale;
@@ -107,6 +108,7 @@ struct mp_media_info {
 
 	const char *path;
 	const char *format;
+	char *input_options;
 	int buffering;
 	int speed;
 	enum video_range_type force_range;
@@ -115,6 +117,7 @@ struct mp_media_info {
 };
 
 extern bool mp_media_init(mp_media_t *media, const struct mp_media_info *info);
+
 extern void mp_media_free(mp_media_t *media);
 
 extern void mp_media_play(mp_media_t *media, bool loop);
