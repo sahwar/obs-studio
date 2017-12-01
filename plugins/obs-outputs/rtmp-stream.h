@@ -30,6 +30,9 @@
 #define OPT_BIND_IP "bind_ip"
 #define OPT_NEWSOCKETLOOP_ENABLED "new_socket_loop_enabled"
 #define OPT_LOWLATENCY_ENABLED "low_latency_mode_enabled"
+#define CONGESTION_ARRAY_SIZE 300 // about 10 sec of congestion memory
+#define OPT_DYN_BITRATE_SIMPLE "DynamicalBitrate"
+#define OPT_DYN_BITRATE_ADV "DynamicalBitrateAdv"
 
 //#define TEST_FRAMEDROPS
 
@@ -88,6 +91,16 @@ struct rtmp_stream {
 	struct circlebuf droptest_info;
 	size_t           droptest_size;
 #endif
+
+	/* dynamic variable bitrate variables */
+	int              dynamic_bitrate;
+	int              initial_bitrate;
+	bool             switch_variable_bitrate;
+	uint64_t         last_adjustment_time;
+	float            last_congestion;
+	float            mean_congestion;
+	float            congestion_array[CONGESTION_ARRAY_SIZE];
+	size_t           congestion_counter;
 
 	RTMP             rtmp;
 

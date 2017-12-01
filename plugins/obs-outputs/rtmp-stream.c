@@ -940,6 +940,9 @@ static void *connect_thread(void *data)
 static bool rtmp_stream_start(void *data)
 {
 	struct rtmp_stream *stream = data;
+	obs_data_t *settings;
+
+	settings = obs_output_get_settings(stream->output);
 
 	if (!obs_output_can_begin_data_capture(stream->output, 0))
 		return false;
@@ -947,6 +950,36 @@ static bool rtmp_stream_start(void *data)
 		return false;
 
 	os_atomic_set_bool(&stream->connecting, true);
+
+	/* store initial bitrate for dynamical variable bitrate option */
+	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+	const char *encoder_id = obs_encoder_get_id(vencoder);
+	obs_data_t *params = obs_encoder_get_settings(vencoder);
+	if (params) {
+		int bitrate = obs_data_get_int(params, "bitrate");
+		stream->initial_bitrate = bitrate;
+		stream->dynamic_bitrate = bitrate;
+		bool isSimpleMode = obs_data_get_bool(settings, "IsSimpleMode1") ||
+				obs_data_get_bool(settings, "IsSimpleMode2");
+		blog(LOG_INFO, "the mode is %i \n", isSimpleMode);
+		bool dyn1 = obs_data_get_bool(settings, OPT_DYN_BITRATE_SIMPLE) && isSimpleMode;
+		bool dyn2 = obs_data_get_bool(settings, OPT_DYN_BITRATE_ADV) && !isSimpleMode;
+		stream->switch_variable_bitrate = dyn1 || dyn2;
+		obs_data_release(params);
+	} else {
+		stream->initial_bitrate = 2500;
+		stream->dynamic_bitrate = 2500;
+		stream->switch_variable_bitrate = false;
+	}
+	stream->last_adjustment_time = os_gettime_ns() / 1000000;
+	stream->last_congestion = 0;
+	stream->congestion_counter = 0;
+	stream->mean_congestion = 0;
+	size_t count;
+	for (count = 0; count < CONGESTION_ARRAY_SIZE; count++) {
+		stream->congestion_array[count] = 0;
+	}
+	obs_data_release(settings);
 	return pthread_create(&stream->connect_thread, NULL, connect_thread,
 			stream) == 0;
 }
@@ -1065,9 +1098,116 @@ static void check_to_drop_frames(struct rtmp_stream *stream, bool pframes)
 	}
 }
 
+/* dynamic variable bitrate */
+float find_maximum(float a[], int n) {
+	int c;
+	int max;
+	max = a[0];
+	for (c = 1; c < n; c++) {
+		if (a[c] > max)
+			max = a[c];
+	}
+	return max;
+}
+
+static void adjust_bitrate(struct rtmp_stream *stream)
+{
+	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+	const char *encoder_id = obs_encoder_get_id(vencoder);
+	obs_data_t *params = obs_encoder_get_settings(vencoder);
+	bool isQSV = strcmp(encoder_id, "obs_qsv11") == 0;
+	int i_nal_hrd = 0;
+	if (strcmp(encoder_id, "obs_x264") == 0) {
+		i_nal_hrd = obs_data_get_int(params, "i_nal_hrd");
+	}
+	uint64_t cur_time_ms = os_gettime_ns() / 1000000;
+	uint64_t last_adjustment_time = stream->last_adjustment_time;
+	float congestion = stream->congestion;
+	size_t counter = stream->congestion_counter;
+	stream->mean_congestion = stream->mean_congestion +
+			(congestion - stream->congestion_array[counter]) /
+			CONGESTION_ARRAY_SIZE;
+	float mean_congestion = stream->mean_congestion;
+	stream->congestion_array[counter] = congestion;
+	stream->congestion_counter = (stream->congestion_counter + 1) %
+			CONGESTION_ARRAY_SIZE;
+	float max_congestion = find_maximum(stream->congestion_array,
+			CONGESTION_ARRAY_SIZE);
+
+	float last_congestion = stream->last_congestion;
+	int current_bitrate = stream->dynamic_bitrate;
+	int initial_bitrate = stream->initial_bitrate;
+
+	/* X264_NAL_HRD_CBR=2 incompatible with dynamic variable bitrate.
+	 * Bitrate is adjusted downwards every second by about 10% for QSV and 20%
+	 * for enc-amf & x264 (tests suggest QSV handles the bitrate changes better).
+	 * Detection threshold of congestion could be chosen larger than 0.15;
+	 * this would mean less reactivity but would allow micro-congestions
+	 * to heal themselves without changing the bitrate.
+	 * We define a minimal bitrate at half the initial one.
+	 */
+	if ( i_nal_hrd != 2 &&	stream->switch_variable_bitrate) {
+
+		if (congestion > 0.15 && current_bitrate > (int)(initial_bitrate / 2) &&
+				(cur_time_ms - last_adjustment_time) > 1000) {
+			current_bitrate = isQSV? (int)(current_bitrate / 1.1):(int)(current_bitrate / 1.2);
+
+			if (current_bitrate < (int)(initial_bitrate / 2)) {
+				current_bitrate = (int)(initial_bitrate / 2);
+			}
+
+			stream->dynamic_bitrate = current_bitrate;
+			int previous_bitrate = obs_data_get_int(params, "bitrate");
+			obs_data_set_int(params, "bitrate", current_bitrate);
+			obs_encoder_update(vencoder, params);
+			blog(LOG_INFO, "Congestion detected %f percent," 
+					"dropping bitrate for encoder %s "
+					"from %i kbps  to %i kbps", congestion * 100, encoder_id,
+					previous_bitrate, current_bitrate);
+			stream->last_adjustment_time = cur_time_ms;
+		}
+		/* bitrate is adjusted upwards by 10% every 5 sec. This means it will take at most
+		 * 25 - 30 sec to recover initial bitrate once congestion is cleared
+		 * this interval could be decreased but this would mean more oscillations
+		 * and also more packet drops.
+		 * So we choose to have lower quality instead of better with more drops.
+		 */
+		if (mean_congestion < 0.05 && max_congestion < 0.15 &&
+				congestion < 0.05 && last_congestion < 0.05 &&
+				current_bitrate < initial_bitrate &&
+				(cur_time_ms - last_adjustment_time) > 5000) {
+
+			current_bitrate = (int)(current_bitrate * 1.10);
+
+			if (current_bitrate > initial_bitrate) {
+				current_bitrate = initial_bitrate;
+			}
+
+			stream->dynamic_bitrate = current_bitrate;
+			int previous_bitrate = obs_data_get_int(params, "bitrate");
+			obs_data_set_int(params, "bitrate", current_bitrate);
+			obs_encoder_update(vencoder, params);
+			blog(LOG_INFO, "Congestion clearing at %f percent,"
+					"raising bitrate for encoder %s"
+					"to %i kbps from previous bitrate %i kbps \n",
+					congestion * 100, encoder_id, current_bitrate,
+					previous_bitrate);
+			stream->last_adjustment_time = cur_time_ms;
+		}
+		stream->last_congestion = congestion;
+	}
+	obs_data_release(params);
+}
+
 static bool add_video_packet(struct rtmp_stream *stream,
 		struct encoder_packet *packet)
 {
+	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+	const char *encoder_id = obs_encoder_get_id(vencoder);
+	if (strcmp(encoder_id, "ffmpeg_nvenc") != 0) {
+		// nvenc supports dynamical bitrate but ffmpeg implementation does not
+		adjust_bitrate(stream);
+	}
 	check_to_drop_frames(stream, false);
 	check_to_drop_frames(stream, true);
 
@@ -1119,6 +1259,7 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 		os_sem_post(stream->send_sem);
 	else
 		obs_encoder_packet_release(&new_packet);
+
 }
 
 static void rtmp_stream_defaults(obs_data_t *defaults)
