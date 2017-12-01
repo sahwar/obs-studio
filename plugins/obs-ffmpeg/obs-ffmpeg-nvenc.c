@@ -232,6 +232,27 @@ static bool nvenc_update(void *data, obs_data_t *settings)
 	return nvenc_init_codec(enc);
 }
 
+static bool nvenc_reconfigure(void *data, obs_data_t *settings)
+{
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 19, 101)
+	struct nvenc_encoder *enc = data;
+
+	int bitrate = (int)obs_data_get_int(settings, "bitrate");
+	const char *rc = obs_data_get_string(settings, "rate_control");
+	bool cbr = astrcmpi(rc, "CBR") == 0;
+	bool vbr = astrcmpi(rc, "VBR") == 0;
+	bool cqp = astrcmpi(rc, "CQP") == 0;
+	bool lossless = astrcmpi(rc, "lossless") == 0;
+	if (cbr || vbr) {
+		enc->context->bit_rate = bitrate * 1000;
+		enc->context->rc_max_rate = bitrate * 1000;
+	}
+	if (cbr)
+		enc->context->rc_min_rate = bitrate * 1000;
+#endif
+	return true;
+}
+
 static void nvenc_destroy(void *data)
 {
 	struct nvenc_encoder *enc = data;
@@ -536,16 +557,18 @@ static bool nvenc_sei_data(void *data, uint8_t **extra_data, size_t *size)
 }
 
 struct obs_encoder_info nvenc_encoder_info = {
-	.id             = "ffmpeg_nvenc",
-	.type           = OBS_ENCODER_VIDEO,
-	.codec          = "h264",
+	.id = "ffmpeg_nvenc",
+	.type = OBS_ENCODER_VIDEO,
+	.codec = "h264",
 	.get_name       = nvenc_getname,
 	.create         = nvenc_create,
 	.destroy        = nvenc_destroy,
 	.encode         = nvenc_encode,
+	.update         = nvenc_reconfigure,
 	.get_defaults   = nvenc_defaults,
 	.get_properties = nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
 	.get_sei_data   = nvenc_sei_data,
-	.get_video_info = nvenc_video_info
+	.get_video_info = nvenc_video_info,
+	.caps           = OBS_ENCODER_VIDEO_DYN
 };

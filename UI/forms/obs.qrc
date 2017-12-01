@@ -45,6 +45,9 @@
     <file>images/track5OFF.png</file>
     <file>images/track6.png</file>
     <file>images/track6OFF.png</file>
+    <file>images/dyn.png</file>
+    <file>images/dyndown.png</file>
+    <file>images/dynup.png</file>
   </qresource>
   <qresource prefix="/settings">
     <file>images/settings/advanced.png</file>
