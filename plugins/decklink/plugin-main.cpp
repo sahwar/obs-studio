@@ -30,10 +30,23 @@ OBS_MODULE_USE_DEFAULT_LOCALE("decklink", "en-US")
 #define TEXT_CHANNEL_FORMAT_NONE        obs_module_text("ChannelFormat.None")
 #define TEXT_CHANNEL_FORMAT_2_0CH       obs_module_text("ChannelFormat.2_0ch")
 #define TEXT_CHANNEL_FORMAT_2_1CH       obs_module_text("ChannelFormat.2_1ch")
+#define TEXT_CHANNEL_FORMAT_3_0CH       obs_module_text("ChannelFormat.3_0ch")
 #define TEXT_CHANNEL_FORMAT_4_0CH       obs_module_text("ChannelFormat.4_0ch")
+#define TEXT_CHANNEL_FORMAT_QUAD        obs_module_text("ChannelFormat.quadch")
+#define TEXT_CHANNEL_FORMAT_3_1CH       obs_module_text("ChannelFormat.3_1ch")
+#define TEXT_CHANNEL_FORMAT_5_0CH       obs_module_text("ChannelFormat.5_0ch")
 #define TEXT_CHANNEL_FORMAT_4_1CH       obs_module_text("ChannelFormat.4_1ch")
 #define TEXT_CHANNEL_FORMAT_5_1CH       obs_module_text("ChannelFormat.5_1ch")
+#define TEXT_CHANNEL_FORMAT_6_0CH       obs_module_text("ChannelFormat.6_0ch")
+#define TEXT_CHANNEL_FORMAT_6_1CH       obs_module_text("ChannelFormat.6_1ch")
+#define TEXT_CHANNEL_FORMAT_7_0CH       obs_module_text("ChannelFormat.7_0ch")
 #define TEXT_CHANNEL_FORMAT_7_1CH       obs_module_text("ChannelFormat.7_1ch")
+#define TEXT_CHANNEL_FORMAT_8_0CH       obs_module_text("ChannelFormat.8_0ch")
+#define TEXT_CHANNEL_FORMAT_9_0CH       obs_module_text("ChannelFormat.9_0ch")
+#define TEXT_CHANNEL_FORMAT_10_0CH      obs_module_text("ChannelFormat.10_0ch")
+#define TEXT_CHANNEL_FORMAT_11_0CH      obs_module_text("ChannelFormat.11_0ch")
+#define TEXT_CHANNEL_FORMAT_12_0CH      obs_module_text("ChannelFormat.12_0ch")
+#define TEXT_CHANNEL_FORMAT_16_0CH      obs_module_text("ChannelFormat.16_0ch")
 #define TEXT_BUFFERING                  obs_module_text("Buffering")
 
 static DeckLinkDeviceDiscovery *deviceEnum = nullptr;
@@ -157,15 +170,41 @@ static bool decklink_device_changed(obs_properties_t *props,
 
 		if (device->GetMaxChannel() >= 8) {
 			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_2_1CH,
-				SPEAKERS_2POINT1);
+					SPEAKERS_2POINT1);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_3_0CH,
+					SPEAKERS_3POINT0);
 			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_4_0CH,
 					SPEAKERS_4POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_QUAD,
+					SPEAKERS_QUAD);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_3_1CH,
+					SPEAKERS_3POINT1);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_5_0CH,
+					SPEAKERS_5POINT0);
 			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_4_1CH,
-				SPEAKERS_4POINT1);
+					SPEAKERS_4POINT1);
 			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_5_1CH,
 					SPEAKERS_5POINT1);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_6_0CH,
+					SPEAKERS_6POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_6_1CH,
+					SPEAKERS_6POINT1);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_7_0CH,
+					SPEAKERS_7POINT0);
 			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_7_1CH,
 					SPEAKERS_7POINT1);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_8_0CH,
+					SPEAKERS_OCTAGONAL);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_9_0CH,
+					SPEAKERS_9POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_10_0CH,
+					SPEAKERS_10POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_11_0CH,
+					SPEAKERS_11POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_12_0CH,
+					SPEAKERS_12POINT0);
+			obs_property_list_add_int(channelList, TEXT_CHANNEL_FORMAT_16_0CH,
+					SPEAKERS_HEXADECAGONAL);
 		}
 	}
 
@@ -261,15 +300,40 @@ static obs_properties_t *decklink_get_properties(void *data)
 			SPEAKERS_STEREO);
 	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_2_1CH,
 			SPEAKERS_2POINT1);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_3_0CH,
+			SPEAKERS_3POINT0);
 	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_4_0CH,
 			SPEAKERS_4POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_QUAD,
+			SPEAKERS_QUAD);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_3_1CH,
+			SPEAKERS_3POINT1);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_5_0CH,
+			SPEAKERS_5POINT0);
 	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_4_1CH,
 			SPEAKERS_4POINT1);
 	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_5_1CH,
 			SPEAKERS_5POINT1);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_6_0CH,
+			SPEAKERS_6POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_6_1CH,
+			SPEAKERS_6POINT1);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_7_0CH,
+			SPEAKERS_7POINT0);
 	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_7_1CH,
 			SPEAKERS_7POINT1);
-
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_8_0CH,
+			SPEAKERS_OCTAGONAL);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_9_0CH,
+			SPEAKERS_9POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_10_0CH,
+			SPEAKERS_10POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_11_0CH,
+			SPEAKERS_11POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_12_0CH,
+			SPEAKERS_12POINT0);
+	obs_property_list_add_int(list, TEXT_CHANNEL_FORMAT_16_0CH,
+			SPEAKERS_HEXADECAGONAL);
 	obs_properties_add_bool(props, BUFFERING, TEXT_BUFFERING);
 
 	UNUSED_PARAMETER(data);
