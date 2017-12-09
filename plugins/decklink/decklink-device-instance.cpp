@@ -31,11 +31,26 @@ static inline int ConvertChannelFormat(speaker_layout format)
 {
 	switch (format) {
 	case SPEAKERS_2POINT1:
+	case SPEAKERS_3POINT0:
 	case SPEAKERS_4POINT0:
+	case SPEAKERS_QUAD:
+	case SPEAKERS_3POINT1:
+	case SPEAKERS_5POINT0:
 	case SPEAKERS_4POINT1:
 	case SPEAKERS_5POINT1:
+	case SPEAKERS_6POINT0:
+	case SPEAKERS_6POINT1:
+	case SPEAKERS_7POINT0:
 	case SPEAKERS_7POINT1:
+	case SPEAKERS_OCTAGONAL:
 		return 8;
+
+	case SPEAKERS_9POINT0:
+	case SPEAKERS_10POINT0:
+	case SPEAKERS_11POINT0:
+	case SPEAKERS_12POINT0:
+	case SPEAKERS_HEXADECAGONAL:
+		return 16;
 
 	default:
 	case SPEAKERS_STEREO:
@@ -49,11 +64,18 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format)
 	case SPEAKERS_2POINT1:
 		return repack_mode_8to3ch_swap23;
 	case SPEAKERS_4POINT0:
+	case SPEAKERS_QUAD:
+	case SPEAKERS_3POINT1:
 		return repack_mode_8to4ch_swap23;
+	case SPEAKERS_5POINT0:
 	case SPEAKERS_4POINT1:
 		return repack_mode_8to5ch_swap23;
 	case SPEAKERS_5POINT1:
+	case SPEAKERS_6POINT0:
 		return repack_mode_8to6ch_swap23;
+	case SPEAKERS_6POINT1:
+	case SPEAKERS_7POINT0:
+		return repack_mode_8to7ch_swap23;
 	case SPEAKERS_7POINT1:
 		return repack_mode_8ch_swap23_swap46_swap57;
 	default:
@@ -102,11 +124,15 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 	int maxdevicechannel = device->GetMaxChannel();
 	bool isWin = IS_WIN;
 
-	if (channelFormat != SPEAKERS_UNKNOWN &&
-	    channelFormat != SPEAKERS_MONO &&
-	    channelFormat != SPEAKERS_STEREO &&
-	    maxdevicechannel >= 8 &&
-	    isWin) {
+	if (channelFormat != SPEAKERS_UNKNOWN && channelFormat != SPEAKERS_MONO
+		&& channelFormat != SPEAKERS_STEREO && channelFormat != SPEAKERS_3POINT0
+		&& channelFormat != SPEAKERS_OCTAGONAL
+		&& channelFormat != SPEAKERS_9POINT0
+		&& channelFormat != SPEAKERS_10POINT0
+		&& channelFormat != SPEAKERS_11POINT0
+		&& channelFormat != SPEAKERS_12POINT0
+		&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
+		&& isWin) {
 
 		if (audioRepacker->repack((uint8_t *)bytes, frameCount) < 0) {
 			LOG(LOG_ERROR, "Failed to convert audio packet data");
@@ -245,11 +271,16 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 		if (audioResult != S_OK)
 			LOG(LOG_WARNING, "Failed to enable audio input; continuing...");
 
-		if (channelFormat != SPEAKERS_UNKNOWN &&
-		    channelFormat != SPEAKERS_MONO &&
-		    channelFormat != SPEAKERS_STEREO &&
-		    maxdevicechannel >= 8 &&
-		    isWin) {
+		if (channelFormat != SPEAKERS_UNKNOWN && channelFormat != SPEAKERS_MONO
+			&& channelFormat != SPEAKERS_STEREO
+			&& channelFormat != SPEAKERS_3POINT0
+			&& channelFormat != SPEAKERS_OCTAGONAL
+			&& channelFormat != SPEAKERS_9POINT0
+			&& channelFormat != SPEAKERS_10POINT0
+			&& channelFormat != SPEAKERS_11POINT0
+			&& channelFormat != SPEAKERS_12POINT0
+			&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
+			&& isWin) {
 
 			const audio_repack_mode_t repack_mode = ConvertRepackFormat
 					(channelFormat);

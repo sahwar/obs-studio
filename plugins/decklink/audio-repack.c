@@ -120,6 +120,13 @@ int audio_repack_init(struct audio_repack *repack,
 		repack->repack_func = &repack_squash_swap;
 		break;
 
+	case repack_mode_8to7ch_swap23:
+		repack->base_src_size = 8 * (16 / 8);
+		repack->base_dst_size = 7 * (16 / 8);
+		repack->extra_dst_size = 1;
+		repack->repack_func = &repack_squash_swap;
+		break;
+
 	case repack_mode_8ch_swap23_swap46_swap57:
 		repack->base_src_size = 8 * (16 / 8);
 		repack->base_dst_size = 8 * (16 / 8);
