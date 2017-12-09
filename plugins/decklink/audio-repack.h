@@ -30,6 +30,7 @@ enum _audio_repack_mode {
 	repack_mode_8to4ch_swap23,
 	repack_mode_8to5ch_swap23,
 	repack_mode_8to6ch_swap23,
+	repack_mode_8to7ch_swap23,
 	repack_mode_8ch_swap23_swap46_swap57,
 };
 
