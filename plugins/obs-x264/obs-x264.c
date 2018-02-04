@@ -107,7 +107,6 @@ static void obs_x264_defaults(obs_data_t *settings)
 	obs_data_set_default_string(settings, "profile",     "");
 	obs_data_set_default_string(settings, "tune",        "");
 	obs_data_set_default_string(settings, "x264opts",    "");
-	obs_data_set_default_bool  (settings, "dynamic_variable_bitrate", false);
 	obs_data_set_default_int   (settings, "i_nal_hrd", X264_NAL_HRD_NONE);
 }
 
@@ -131,7 +130,6 @@ static inline void add_strings(obs_property_t *list, const char *const *strings)
 #define TEXT_TUNE       obs_module_text("Tune")
 #define TEXT_NONE       obs_module_text("None")
 #define TEXT_X264_OPTS  obs_module_text("EncoderOptions")
-#define TEXT_DYN_BITRATE obs_module_text("Dynamical Variable Bitrate (Experimental)")
 
 static bool use_bufsize_modified(obs_properties_t *ppts, obs_property_t *p,
 		obs_data_t *settings)
@@ -208,8 +206,6 @@ static obs_properties_t *obs_x264_props(void *unused)
 			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	obs_property_list_add_string(list, TEXT_NONE, "");
 	add_strings(list, x264_tune_names);
-	obs_properties_add_bool(props, "dynamic_variable_bitrate",
-			TEXT_DYN_BITRATE);
 
 #ifdef ENABLE_VFR
 	obs_properties_add_bool(props, "vfr", TEXT_VFR);
@@ -499,6 +495,7 @@ static void update_params(struct obs_x264 *obsx264, obs_data_t *settings,
 			obsx264->params.rc.b_filler = true;
 #else
 			obsx264->params.i_nal_hrd = X264_NAL_HRD_CBR;
+			obs_data_set_int(settings, "i_nal_hrd", X264_NAL_HRD_CBR);
 #endif
 		}
 	} else {
