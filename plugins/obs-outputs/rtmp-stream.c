@@ -1115,6 +1115,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
 	const char *encoder_id = obs_encoder_get_id(vencoder);
 	obs_data_t *params = obs_encoder_get_settings(vencoder);
+	bool isQSV = strcmp(encoder_id, "obs_qsv11") == 0;
 	int i_nal_hrd = 0;
 	if (strcmp(encoder_id, "obs_x264") == 0) {
 		i_nal_hrd = obs_data_get_int(params, "i_nal_hrd");
@@ -1138,7 +1139,8 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	int initial_bitrate = stream->initial_bitrate;
 
 	/* X264_NAL_HRD_CBR=2 incompatible with dynamic variable bitrate.
-	 * Bitrate is adjusted downwards every second by about 10%.
+	 * Bitrate is adjusted downwards every second by about 10% for QSV and 20%
+	 * for enc-amf & x264 (tests suggest QSV handles the bitrate changes better).
 	 * Detection threshold of congestion could be chosen larger than 0.15;
 	 * this would mean less reactivity but would allow micro-congestions
 	 * to heal themselves without changing the bitrate.
@@ -1148,7 +1150,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 
 		if (congestion > 0.15 && current_bitrate > (int)(initial_bitrate / 2) &&
 				(cur_time_ms - last_adjustment_time) > 1000) {
-			current_bitrate = (int)(current_bitrate / 1.1);
+			current_bitrate = isQSV? (int)(current_bitrate / 1.1):(int)(current_bitrate / 1.2);
 
 			if (current_bitrate < (int)(initial_bitrate / 2)) {
 				current_bitrate = (int)(initial_bitrate / 2);
