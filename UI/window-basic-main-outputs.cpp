@@ -393,8 +393,8 @@ void SimpleOutput::Update()
 			"UseAdvanced");
 	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
 			"EnforceBitrate");
-	bool dynamicalBitrate = config_get_bool(main->Config(), "SimpleOutput",
-		"DynamicalBitrate");
+	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
+		"DynamicBitrate");
 
 	const char *custom = config_get_string(main->Config(),
 			"SimpleOutput", "x264Settings");
@@ -425,7 +425,7 @@ void SimpleOutput::Update()
 	if (advanced) {
 		obs_data_set_string(h264Settings, "preset", preset);
 		obs_data_set_string(h264Settings, "x264opts", custom);
-		obs_data_set_bool(h264Settings, "DynamicalBitrate", dynamicalBitrate);
+		obs_data_set_bool(h264Settings, "DynamicBitrate", dynamicBitrate);
 	}
 
 	obs_data_set_string(aacSettings, "rate_control", "CBR");
@@ -740,8 +740,8 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 			"NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
-	bool dynamicalBitrate = config_get_bool(main->Config(), "SimpleOutput",
-		"DynamicalBitrate");
+	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
+		"DynamicBitrate");
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
@@ -749,7 +749,7 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 			enableNewSocketLoop);
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
-	obs_data_set_bool(settings, "DynamicalBitrate", dynamicalBitrate);
+	obs_data_set_bool(settings, "DynamicBitrate", dynamicBitrate);
 	const char* mode = config_get_string(main->Config(), "Output", "Mode");
 	bool isSimpleMode = astrcmpi(mode, "Simple") == 0;
 	obs_data_set_bool(settings, "IsSimpleMode1", isSimpleMode);
@@ -1510,8 +1510,8 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			"NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
-	bool dynamicalBitrateAdv = config_get_bool(main->Config(), "AdvOut",
-			"DynamicalBitrateAdv");
+	bool dynamicBitrateAdv = config_get_bool(main->Config(), "AdvOut",
+			"DynamicBitrateAdv");
 	const char* mode = config_get_string(main->Config(), "Output", "Mode");
 	bool isSimpleMode = astrcmpi(mode, "Simple") == 0;
 
@@ -1521,7 +1521,7 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			enableNewSocketLoop);
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
-	obs_data_set_bool(settings, "DynamicalBitrateAdv", dynamicalBitrateAdv);
+	obs_data_set_bool(settings, "DynamicBitrateAdv", dynamicBitrateAdv);
 	obs_data_set_bool(settings, "IsSimpleMode2", isSimpleMode);
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);

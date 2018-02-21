@@ -31,8 +31,8 @@
 #define OPT_NEWSOCKETLOOP_ENABLED "new_socket_loop_enabled"
 #define OPT_LOWLATENCY_ENABLED "low_latency_mode_enabled"
 #define CONGESTION_ARRAY_SIZE 300 // about 10 sec of congestion memory
-#define OPT_DYN_BITRATE_SIMPLE "DynamicalBitrate"
-#define OPT_DYN_BITRATE_ADV "DynamicalBitrateAdv"
+#define OPT_DYN_BITRATE_SIMPLE "DynamicBitrate"
+#define OPT_DYN_BITRATE_ADV "DynamicBitrateAdv"
 
 //#define TEST_FRAMEDROPS
 
