@@ -1071,7 +1071,7 @@
                     <item row="5" column="1">
                       <widget class="QCheckBox" name="simpleOutDynamic">
                         <property name="text">
-                          <string>Basic.Settings.Output.DynamicalBitrate</string>
+                          <string>Basic.Settings.Output.DynamicBitrate</string>
                         </property>
                       </widget>
                     </item>
@@ -1588,7 +1588,7 @@
                            <item row="4" column="1">
                             <widget class="QCheckBox" name="advOutDynamic">
                              <property name="text">
-                              <string>Basic.Settings.Output.Adv.DynamicalBitrate</string>
+                              <string>Basic.Settings.Output.Adv.DynamicBitrate</string>
                              </property>
                             </widget>
                            </item>

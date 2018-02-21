@@ -1042,7 +1042,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 			false);
 	config_set_default_bool  (basicConfig, "SimpleOutput", "EnforceBitrate",
 			true);
-	config_set_default_bool  (basicConfig, "SimpleOutput", "DynamicalBitrate",
+	config_set_default_bool  (basicConfig, "SimpleOutput", "DynamicBitrate",
 			false);
 	config_set_default_string(basicConfig, "SimpleOutput", "Preset",
 			"veryfast");
@@ -1058,7 +1058,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings",
 			true);
-	config_set_default_bool  (basicConfig, "AdvOut", "DynamicalBitrateAdv",
+	config_set_default_bool  (basicConfig, "AdvOut", "DynamicBitrateAdv",
 			false);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1);

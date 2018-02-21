@@ -961,10 +961,16 @@ static bool rtmp_stream_start(void *data)
 		stream->dynamic_bitrate = bitrate;
 		bool isSimpleMode = obs_data_get_bool(settings, "IsSimpleMode1") ||
 				obs_data_get_bool(settings, "IsSimpleMode2");
-		blog(LOG_INFO, "the mode is %i \n", isSimpleMode);
 		bool dyn1 = obs_data_get_bool(settings, OPT_DYN_BITRATE_SIMPLE) && isSimpleMode;
 		bool dyn2 = obs_data_get_bool(settings, OPT_DYN_BITRATE_ADV) && !isSimpleMode;
 		stream->switch_variable_bitrate = dyn1 || dyn2;
+		if (stream->switch_variable_bitrate) {
+			blog(LOG_INFO, "Dynamic bitrate ON: bitrate auto management"
+					"when network congestion is detected.\n");
+		}
+		else {
+			blog(LOG_INFO, "Dynamic bitrate OFF");
+		}
 		obs_data_release(params);
 	} else {
 		stream->initial_bitrate = 2500;
@@ -1204,8 +1210,9 @@ static bool add_video_packet(struct rtmp_stream *stream,
 {
 	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
 	const char *encoder_id = obs_encoder_get_id(vencoder);
-	if (strcmp(encoder_id, "ffmpeg_nvenc") != 0) {
-		// nvenc supports dynamical bitrate but ffmpeg implementation does not
+	uint32_t caps = obs_get_encoder_caps(encoder_id);
+	/* */
+	if (caps & OBS_ENCODER_VIDEO_DYN) {
 		adjust_bitrate(stream);
 	}
 	check_to_drop_frames(stream, false);
