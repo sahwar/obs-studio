@@ -966,7 +966,7 @@ static bool rtmp_stream_start(void *data)
 		stream->switch_variable_bitrate = dyn1 || dyn2;
 		if (stream->switch_variable_bitrate) {
 			blog(LOG_INFO, "Dynamic bitrate ON: bitrate auto management"
-					"when network congestion is detected.\n");
+					" when network congestion is detected.\n");
 		}
 		else {
 			blog(LOG_INFO, "Dynamic bitrate OFF");
@@ -981,6 +981,7 @@ static bool rtmp_stream_start(void *data)
 	stream->last_congestion = 0;
 	stream->congestion_counter = 0;
 	stream->mean_congestion = 0;
+	stream->bitrate_state = BITRATE_IS_INITIAL_BITRATE;
 	size_t count;
 	for (count = 0; count < CONGESTION_ARRAY_SIZE; count++) {
 		stream->congestion_array[count] = 0;
@@ -1122,27 +1123,27 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	const char *encoder_id = obs_encoder_get_id(vencoder);
 	obs_data_t *params = obs_encoder_get_settings(vencoder);
 	bool isQSV = strcmp(encoder_id, "obs_qsv11") == 0;
-	int i_nal_hrd = 0;
-	if (strcmp(encoder_id, "obs_x264") == 0) {
-		i_nal_hrd = obs_data_get_int(params, "i_nal_hrd");
-	}
+	int i_nal_hrd = strcmp(encoder_id, "obs_x264") == 0 ?
+			obs_data_get_int(params, "i_nal_hrd"): 0;
+
 	uint64_t cur_time_ms = os_gettime_ns() / 1000000;
 	uint64_t last_adjustment_time = stream->last_adjustment_time;
-	float congestion = stream->congestion;
+
 	size_t counter = stream->congestion_counter;
-	stream->mean_congestion = stream->mean_congestion +
-			(congestion - stream->congestion_array[counter]) /
-			CONGESTION_ARRAY_SIZE;
-	float mean_congestion = stream->mean_congestion;
-	stream->congestion_array[counter] = congestion;
+	stream->mean_congestion += (stream->congestion
+			- stream->congestion_array[counter]) / CONGESTION_ARRAY_SIZE;
+	stream->congestion_array[counter] = stream->congestion;
 	stream->congestion_counter = (stream->congestion_counter + 1) %
 			CONGESTION_ARRAY_SIZE;
+	float congestion = stream->congestion;
+	float last_congestion = stream->last_congestion;
+	float mean_congestion = stream->mean_congestion;
 	float max_congestion = find_maximum(stream->congestion_array,
 			CONGESTION_ARRAY_SIZE);
 
-	float last_congestion = stream->last_congestion;
 	int current_bitrate = stream->dynamic_bitrate;
 	int initial_bitrate = stream->initial_bitrate;
+	int previous_bitrate;
 
 	/* X264_NAL_HRD_CBR=2 incompatible with dynamic variable bitrate.
 	 * Bitrate is adjusted downwards every second by about 10% for QSV and 20%
@@ -1152,25 +1153,35 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	 * to heal themselves without changing the bitrate.
 	 * We define a minimal bitrate at half the initial one.
 	 */
-	if ( i_nal_hrd != 2 &&	stream->switch_variable_bitrate) {
+	bool decrease_br = congestion > 0.15 &&
+		current_bitrate > (int)(initial_bitrate / 2) &&
+		(cur_time_ms - last_adjustment_time) > 1000;
 
-		if (congestion > 0.15 && current_bitrate > (int)(initial_bitrate / 2) &&
-				(cur_time_ms - last_adjustment_time) > 1000) {
-			current_bitrate = isQSV? (int)(current_bitrate / 1.1):(int)(current_bitrate / 1.2);
+	bool increase_br = mean_congestion < 0.05 && max_congestion < 0.15 &&
+		congestion < 0.05 && last_congestion < 0.05 &&
+		current_bitrate < initial_bitrate &&
+		(cur_time_ms - last_adjustment_time) > 5000;
+
+	if (i_nal_hrd != 2 && stream->switch_variable_bitrate) {
+
+		if (decrease_br) {
+			current_bitrate = isQSV?
+					(int)(current_bitrate / 1.1):(int)(current_bitrate / 1.2);
 
 			if (current_bitrate < (int)(initial_bitrate / 2)) {
 				current_bitrate = (int)(initial_bitrate / 2);
 			}
 
 			stream->dynamic_bitrate = current_bitrate;
-			int previous_bitrate = obs_data_get_int(params, "bitrate");
+			previous_bitrate = obs_data_get_int(params, "bitrate");
 			obs_data_set_int(params, "bitrate", current_bitrate);
 			obs_encoder_update(vencoder, params);
-			blog(LOG_INFO, "Congestion detected %f percent," 
+			blog(LOG_INFO, "Congestion detected %f percent, "
 					"dropping bitrate for encoder %s "
 					"from %i kbps  to %i kbps", congestion * 100, encoder_id,
 					previous_bitrate, current_bitrate);
 			stream->last_adjustment_time = cur_time_ms;
+			stream->bitrate_state = BITRATE_SWITCHING_LOWER;
 		}
 		/* bitrate is adjusted upwards by 10% every 5 sec. This means it will take at most
 		 * 25 - 30 sec to recover initial bitrate once congestion is cleared
@@ -1178,10 +1189,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 		 * and also more packet drops.
 		 * So we choose to have lower quality instead of better with more drops.
 		 */
-		if (mean_congestion < 0.05 && max_congestion < 0.15 &&
-				congestion < 0.05 && last_congestion < 0.05 &&
-				current_bitrate < initial_bitrate &&
-				(cur_time_ms - last_adjustment_time) > 5000) {
+		if (increase_br) {
 
 			current_bitrate = (int)(current_bitrate * 1.10);
 
@@ -1190,15 +1198,23 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 			}
 
 			stream->dynamic_bitrate = current_bitrate;
-			int previous_bitrate = obs_data_get_int(params, "bitrate");
+			previous_bitrate = obs_data_get_int(params, "bitrate");
 			obs_data_set_int(params, "bitrate", current_bitrate);
 			obs_encoder_update(vencoder, params);
-			blog(LOG_INFO, "Congestion clearing at %f percent,"
-					"raising bitrate for encoder %s"
+			blog(LOG_INFO, "Congestion clearing at %f percent, "
+					"raising bitrate for encoder %s "
 					"to %i kbps from previous bitrate %i kbps \n",
 					congestion * 100, encoder_id, current_bitrate,
 					previous_bitrate);
 			stream->last_adjustment_time = cur_time_ms;
+			stream->bitrate_state = current_bitrate == initial_bitrate ?
+					BITRATE_IS_INITIAL_BITRATE : BITRATE_SWITCHING_LARGER;
+		}
+		/* after 1 sec the bitrate state is reset to BITRATE_SWITCHING_STATIONARY */
+		if (!decrease_br && !increase_br &&
+			(cur_time_ms - last_adjustment_time) > 1000) {
+			stream->bitrate_state = current_bitrate == initial_bitrate ?
+					BITRATE_IS_INITIAL_BITRATE : BITRATE_SWITCHING_STATIONARY;
 		}
 		stream->last_congestion = congestion;
 	}
@@ -1335,6 +1351,12 @@ static float rtmp_stream_congestion(void *data)
 		return stream->min_priority > 0 ? 1.0f : stream->congestion;
 }
 
+static int rtmp_stream_dynamic_bitrate_state(void *data)
+{
+	struct rtmp_stream *stream = data;
+	return stream->bitrate_state;
+}
+
 static int rtmp_stream_connect_time(void *data)
 {
 	struct rtmp_stream *stream = data;
@@ -1360,5 +1382,6 @@ struct obs_output_info rtmp_output_info = {
 	.get_total_bytes      = rtmp_stream_total_bytes_sent,
 	.get_congestion       = rtmp_stream_congestion,
 	.get_connect_time_ms  = rtmp_stream_connect_time,
-	.get_dropped_frames   = rtmp_stream_dropped_frames
+	.get_dropped_frames   = rtmp_stream_dropped_frames,
+	.get_bitrate_state    = rtmp_stream_dynamic_bitrate_state
 };

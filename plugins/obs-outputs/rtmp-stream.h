@@ -34,6 +34,13 @@
 #define OPT_DYN_BITRATE_SIMPLE "DynamicBitrate"
 #define OPT_DYN_BITRATE_ADV "DynamicBitrateAdv"
 
+enum dynamicBitrateState {
+	BITRATE_IS_INITIAL_BITRATE,
+	BITRATE_SWITCHING_LOWER, // decreasing bitrate due to congestion
+	BITRATE_SWITCHING_STATIONARY, // bitrate unchanged; bitrate < initial bitrate
+	BITRATE_SWITCHING_LARGER // increasing bitrate due to congestion clearing
+};
+
 //#define TEST_FRAMEDROPS
 
 #ifdef TEST_FRAMEDROPS
@@ -92,7 +99,7 @@ struct rtmp_stream {
 	size_t           droptest_size;
 #endif
 
-	/* dynamic variable bitrate variables */
+	/* dynamic bitrate variables */
 	int              dynamic_bitrate;
 	int              initial_bitrate;
 	bool             switch_variable_bitrate;
@@ -101,6 +108,8 @@ struct rtmp_stream {
 	float            mean_congestion;
 	float            congestion_array[CONGESTION_ARRAY_SIZE];
 	size_t           congestion_counter;
+	/* stores the dynamic bitrate state for UI status bar */
+	enum dynamicBitrateState bitrate_state;
 
 	RTMP             rtmp;
 
