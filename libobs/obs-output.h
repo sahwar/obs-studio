@@ -62,6 +62,8 @@ struct obs_output_info {
 
 	int (*get_dropped_frames)(void *data);
 
+	int (*get_bitrate_state)(void *data);
+
 	void *type_data;
 	void (*free_type_data)(void *type_data);
 

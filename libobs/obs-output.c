@@ -2141,6 +2141,14 @@ float obs_output_get_congestion(obs_output_t *output)
 	return 0;
 }
 
+int obs_output_get_bitrate_state(obs_output_t *output)
+{
+	if (!obs_output_valid(output, "obs_output_get_bitrate_state"))
+		return 0;
+	int state = output->info.get_bitrate_state(output->context.data);
+	return state;
+}
+
 int obs_output_get_connect_time_ms(obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_connect_time_ms"))
