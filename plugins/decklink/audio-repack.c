@@ -43,12 +43,26 @@ int repack_squash(struct audio_repack *repack,
 
 	/*  Audio needs squashing in order to avoid resampling issues.
 	 */
-	while (src != esrc) {
-		__m128i target = _mm_load_si128(src++);
-		_mm_storeu_si128((__m128i *)dst, target);
-		dst += 8 - squash;
+	if (repack->base_src_size == 16) {
+		while (src != esrc) {
+			__m128i target = _mm_load_si128(src++);
+			_mm_storeu_si128((__m128i *)dst, target);
+			dst += 8 - squash;
+		}
 	}
-
+	/* Squash empty channels for 9 to 15 channels.
+	 */
+	if (repack->base_src_size == 32) {
+		esrc = src + 2 *frame_count;
+		while (src != esrc) {
+			__m128i target_l = _mm_load_si128(src++);
+			__m128i target_h = _mm_load_si128(src++);
+			_mm_storeu_si128((__m128i *)dst, target_l);
+			dst += 8;
+			_mm_storeu_si128((__m128i *)dst, target_h);
+			dst += 8 - squash;
+		}
+	}
 	return 0;
 }
 
@@ -60,10 +74,18 @@ int audio_repack_init(struct audio_repack *repack,
 	if (sample_bit != 16)
 		return -1;
 
-	repack->base_src_size = 8 * (16 / 8);
 	repack->base_dst_size = (int)repack_mode * (16 / 8);
-	repack->extra_dst_size = 8 - (int)repack_mode;
 	repack->repack_func = &repack_squash;
+
+	if (repack_mode <= 8) {
+		repack->base_src_size = 8 * (16 / 8);
+		repack->extra_dst_size = 8 - (int)repack_mode;
+	}
+
+	if (repack_mode > 8) {
+		repack->base_src_size = 16 * (16 / 8);
+		repack->extra_dst_size = 16 - (int)repack_mode;
+	}
 
 	return 0;
 }
