@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <string>
 #include <windows.h>
+#include "gui/asioselector.h"
 #include "circle-buffer.h"
 #include "portaudio.h"
 #include "pa_asio.h"
@@ -55,6 +56,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("win-asio", "en-US")
 #define TEXT_BUFFER_1024_SAMPLES        obs_module_text("1024_samples")
 #define TEXT_BITDEPTH                   obs_module_text("BitDepth")
 
+AsioSelector *asioselector = NULL;
 
 typedef struct PaAsioDeviceInfo
 {
@@ -95,6 +97,346 @@ struct asio_data {
 	int route[MAX_AUDIO_CHANNELS]; // stores the channel re-ordering info
 };
 */
+
+void activate_asio_device();
+void load_asio_device();
+
+char* get_scene_data_path() {
+	const char* scene = obs_frontend_get_current_scene_collection();
+	const char* config_path =
+		os_get_config_path_ptr("obs-studio\\basic");//\\scenes
+
+	long len = strlen(scene) + strlen("\\") + strlen(config_path) + 1;
+
+	char *scene_data_path = (char *)malloc(len);
+	sprintf(scene_data_path, "%s\\%s", config_path, scene);
+
+	return scene_data_path;
+}
+
+void save_asio_device(AsioSelector *selector) {
+	obs_data_t *device_settings = obs_data_create();
+	//obs_data_set_string(active_device_settings, "", "");
+	std::vector<uint32_t> active_devices = selector->getActiveDevices();
+	
+	std::string device_name = "";
+
+	double sample_rate = 0;
+	uint32_t buffer_size = 0;
+	std::string data_format = "";
+
+	double default_sample_rate = 0;
+	uint32_t default_buffer_size = 0;
+	std::string default_data_format = "";
+
+	bool active_device = false;
+	bool use_optimal_format = false;
+	bool use_device_timing = false;
+	bool use_minimal_latency = false;
+
+	size_t n = selector->getNumberOfDevices();
+
+	obs_data_array_t *asio_devices = obs_data_array_create();
+	
+	for (size_t i = 0; i < n; i++) {
+		obs_data_t * asio_device_item = obs_data_create();
+
+		obs_data_array_t *obs_array = obs_data_array_create();
+		std::vector<double> sample_rates = selector->getSampleRatesForDevice(i);
+		for (size_t j = 0; j < sample_rates.size(); j++) {
+			obs_data_t* item = obs_data_create();
+			//obs_data_set_string(item, "value", )
+			obs_data_set_double(item, "value", sample_rates[j]);
+			obs_data_array_push_back(obs_array, item);
+			obs_data_release(item);
+		}
+		obs_data_set_array(asio_device_item, "sample_rate_list", obs_array);
+		obs_data_array_release(obs_array);
+		
+		obs_array = obs_data_array_create();
+		std::vector<uint64_t> buffer_sizes = selector->getBufferSizesForDevice(i);
+		for (size_t j = 0; j < buffer_sizes.size(); j++) {
+			obs_data_t* item = obs_data_create();
+			obs_data_set_int(item, "value", buffer_sizes[j]);
+			obs_data_array_push_back(obs_array, item);
+			obs_data_release(item);
+		}
+		obs_data_set_array(asio_device_item, "buffer_size_list", obs_array);
+		obs_data_array_release(obs_array);
+
+		obs_array = obs_data_array_create();
+		std::vector<std::string> audio_formats = selector->getAudioFormatsForDevice(i);
+		for (size_t j = 0; j < audio_formats.size(); j++) {
+			obs_data_t* item = obs_data_create();
+			obs_data_set_string(item, "value", audio_formats[j].c_str());
+			obs_data_array_push_back(obs_array, item);
+			obs_data_release(item);
+		}
+		obs_data_set_array(asio_device_item, "audio_format_list", obs_array);
+		obs_data_array_release(obs_array);
+
+		device_name = asioselector->getDeviceName(i);
+		obs_data_set_string(asio_device_item, "device_name", device_name.c_str());
+
+		active_device = selector->getIsActiveDevice(i);
+
+		sample_rate = selector->getSampleRateForDevice(i);
+		buffer_size = selector->getBufferSizeForDevice(i);
+		data_format = selector->getAudioFormatForDevice(i);
+
+		default_sample_rate = selector->getDefaultSampleRateForDevice(i);
+		default_buffer_size = selector->getDefaultBufferSizeForDevice(i);
+		default_data_format = selector->getDefaultAudioFormatForDevice(i);
+
+		use_optimal_format = selector->getUseOptimalFormat(i);
+		use_device_timing = selector->getUseDeviceTiming(i);
+		use_minimal_latency = selector->getUseMinimalLatency(i);
+
+		obs_data_set_bool(asio_device_item, "_device_active", active_device);
+		obs_data_set_bool(asio_device_item, "_use_minimal_latency", use_minimal_latency);
+		obs_data_set_bool(asio_device_item, "_use_optimal_format", use_optimal_format);
+		obs_data_set_bool(asio_device_item, "_use_device_timing", use_device_timing);
+
+		obs_data_set_double(asio_device_item, "default_sample_rate", default_sample_rate);
+		obs_data_set_int(asio_device_item, "default_buffer_size", default_buffer_size);
+		obs_data_set_string(asio_device_item, "default_audio_format", default_data_format.c_str());
+
+		//obs_data_set_array(current_gui_settings, "_device_active", );
+		//obs_data_set_array(current_gui_settings, "_use_minimal_latency", );
+		//obs_data_set_array(current_gui_settings, "_use_optimal_format", );
+		//obs_data_set_array(current_gui_settings, "_use_device_timing", );
+
+		if (use_optimal_format) {
+			//Todo: change between optimal formats
+			// 16 bit integer 
+			// 32 bit integer
+			// 32 bit floating point (obs native) <-
+			//pick device native format but prefer floating point if possible
+		}
+		else {
+
+		}
+		if (use_device_timing) {
+
+		}
+		if (use_minimal_latency) {
+			buffer_size = selector->getBufferSizesForDevice(i)[0];
+		}
+		else {
+			
+		}
+
+		obs_data_set_double(asio_device_item, "current_sample_rate", sample_rate);
+		obs_data_set_int(asio_device_item, "current_buffer_size", buffer_size);
+		obs_data_set_string(asio_device_item, "current_audio_format", data_format.c_str());
+
+		obs_data_array_push_back(asio_devices, asio_device_item);
+		obs_data_release(asio_device_item);
+
+		/*
+		size_t device_len = device_name.length();
+		const char* scene_data_path = get_scene_data_path();
+		size_t scene_data_len = strlen(scene_data_path);
+		size_t target_len = scene_data_len + device_len + strlen("-.json") + 1;
+
+		const char* path_format = "%s-%s.json";
+		char* file_path = (char *)malloc(target_len);
+		sprintf(file_path, path_format, scene_data_path, device_name);
+
+		obs_data_save_json_safe(active_device_settings, file_path, "tmp", "bak");
+		
+		if (active_device) {
+			device_name = "active_device_" + std::to_string(i);
+			device_len = device_name.length();
+			target_len = scene_data_len + device_len + strlen("-.json") + 1;
+			if (file_path) {
+				free(file_path);
+			}
+			file_path = (char *)malloc(target_len);
+			sprintf(file_path, path_format, scene_data_path, device_name);
+
+			obs_data_save_json_safe(active_device_settings, file_path, "tmp", "bak");
+
+			active_devices.erase(active_devices.begin());
+		}
+		
+		//don't memory leak
+		free(file_path);
+		*/
+	}
+	obs_data_set_array(device_settings, "settings", asio_devices);
+
+	const char* scene_data_path = get_scene_data_path();
+	size_t scene_data_len = strlen(scene_data_path);
+	size_t target_len = scene_data_len + strlen("asio_settings") + strlen("_.json") + 1;
+	//-%s
+	const char* path_format = "%s_asio_settings.json";
+	char* file_path = (char *)malloc(target_len);
+	sprintf(file_path, path_format, scene_data_path);
+
+	obs_data_save_json_safe(device_settings, file_path, "tmp", "bak");
+
+	//don't memory leak
+	free(file_path);
+
+	obs_data_release(device_settings);
+	obs_data_array_release(asio_devices);
+
+	activate_asio_device();
+}
+
+PaSampleFormat string_to_portaudio_audio_format(std::string format)
+{
+	const char * name = "16 Bit Int";
+	if (strcmp(format.c_str(), name) == 0) {
+		return paInt16;
+	}
+	name = "32 Bit Int";
+	if (strcmp(format.c_str(), name) == 0) {
+		return paInt32;
+	}
+	name = "32 Bit Float";
+	if (strcmp(format.c_str(), name) == 0) {
+		return paFloat32;
+	}
+	// default to 32 float samples for best quality
+	blog(LOG_ERROR, "string error for audio format; defaulting to float");
+	return paFloat32;
+}
+
+void activate_asio_device() {
+	double sample_rate = 0;
+	uint32_t buffer_size = 0;
+	std::string data_format = "";
+	bool active_device = false;
+	bool use_optimal_format = false;
+	bool use_device_timing = false;
+	bool use_minimal_latency = false;
+	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
+	PaStreamParameters *inParam = new PaStreamParameters();
+
+	std::vector<uint32_t> active_devices = asioselector->getActiveDevices();
+	int device_index = active_devices[0];
+	deviceInfo = Pa_GetDeviceInfo(device_index);
+
+	if (active_devices.size() > 0) {
+		sample_rate = asioselector->getSampleRateForDevice(active_devices[0]);
+		buffer_size = asioselector->getBufferSizeForDevice(active_devices[0]);
+		data_format = asioselector->getAudioFormatForDevice(active_devices[0]);
+		active_device = true;
+		use_optimal_format = asioselector->getUseOptimalFormat(active_devices[0]);
+		use_device_timing = asioselector->getUseDeviceTiming(active_devices[0]);
+		use_minimal_latency = asioselector->getUseMinimalLatency(active_devices[0]);
+	}
+	/* stream parameters */
+
+	inParam->channelCount = deviceInfo->maxInputChannels;//data->channels;
+	inParam->device = device_index;//data->device_index;
+	inParam->sampleFormat = string_to_portaudio_audio_format(data_format);
+	inParam->suggestedLatency = 0;
+	inParam->hostApiSpecificStreamInfo = NULL;
+
+	/*
+	if (use_optimal_format) {
+		//Todo: change between optimal formats
+		// 16 bit integer 
+		// 32 bit integer
+		// 32 bit floating point (obs native) <-
+		//pick device native format but prefer floating point if possible
+		obs_data_set_string(active_device_settings, "data_format", data_format.c_str());
+	}
+	else {
+		obs_data_set_string(active_device_settings, "data_format", data_format.c_str());
+	}
+	*/
+	if (use_device_timing) {
+
+	}
+	if (use_minimal_latency) {
+		buffer_size = asioselector->getBufferSizesForDevice(active_devices[0])[0];
+	}
+	//switch devices / activate devices
+}
+
+void load_asio_gui(AsioSelector* selector, AsioSelectorData* old_selector_data) {
+	const char* scene_data_path = get_scene_data_path();
+	size_t scene_data_len = strlen(scene_data_path);
+	size_t target_len = scene_data_len + strlen("asio_settings") + strlen("_.json") + 1;
+	//-%s
+	const char* path_format = "%s_asio_settings.json";
+	char* file_path = (char *)malloc(target_len);
+	sprintf(file_path, path_format, scene_data_path);
+
+	obs_data_t *device_settings = obs_data_create_from_json_file_safe(file_path, "bak");
+	obs_data_array_t *devices = obs_data_get_array(device_settings, "settings");
+	/*todo: fill in gui*/
+	size_t count = obs_data_array_count(devices);
+	size_t gui_count = selector->getNumberOfDevices();
+	size_t j = 0;
+	size_t last_found_index = 0;
+	for (size_t i = 0; i < gui_count; i++) {
+		obs_data_t *item;
+		for (j = last_found_index+1; j < count; j++) {
+			item = obs_data_array_item(devices, j);
+			std::string file_device_name = std::string(obs_data_get_string(item, "device_name"));
+			if (file_device_name == selector->getDeviceName(i)) {
+				last_found_index = j;
+				break;
+			}
+			obs_data_release(item);
+		}
+		if (j < count) {
+
+		}
+		else {
+			continue;
+		}
+
+		selector->setSampleRateForDevice(i, (double)obs_data_get_double(item,"current_sample_rate"));
+		selector->setBufferSizeForDevice(i, (uint64_t)obs_data_get_int(item, "current_buffer_size"));
+		selector->setAudioFormatForDevice(i, std::string(obs_data_get_string(item, "current_audio_format")));
+
+		selector->setDefaultSampleRateForDevice(i, (double)obs_data_get_double(item, "default_sample_rate"));
+		selector->setDefaultBufferSizeForDevice(i, (uint64_t)obs_data_get_int(item, "default_buffer_size"));
+		selector->setDefaultAudioFormatForDevice(i, std::string(obs_data_get_string(item, "default_audio_format")));
+
+		selector->setIsActiveDevice(i, (bool)obs_data_get_bool(item, "_device_active"));
+		selector->setUseMinimalLatency(i, (bool)obs_data_get_bool(item, "_use_minimal_latency"));
+		selector->setUseDeviceTiming(i, (bool)obs_data_get_bool(item, "_use_device_timing"));
+		selector->setUseOptimalFormat(i, (bool)obs_data_get_bool(item, "_use_optimal_format"));
+
+		obs_data_release(item);
+	}
+
+	//don't memory leak
+	free(file_path);
+	obs_data_release(device_settings);
+	obs_data_array_release(devices);
+
+	//store settings in gui
+	activate_asio_device();
+}
+
+void load_asio_device() {
+	//reading json file
+	const char* scene_data_path = get_scene_data_path();
+	size_t scene_data_len = strlen(scene_data_path);
+	size_t target_len = scene_data_len + strlen("asio_settings") + strlen("_.json") + 1;
+	//-%s
+	const char* path_format = "%s_asio_settings.json";
+	char* file_path = (char *)malloc(target_len);
+	sprintf(file_path, path_format, scene_data_path);
+
+	obs_data_t *device_settings = obs_data_create_from_json_file_safe(file_path, "bak");
+	obs_data_array_t *devices = obs_data_get_array(device_settings, "settings");
+
+	//don't memory leak
+
+	free(file_path);
+
+	//store settings in gui
+	activate_asio_device();
+}
 
 /* ======================================================================= */
 /* conversion between portaudio and obs */
@@ -219,7 +561,7 @@ static bool credits(obs_properties_t *props,
 	QMainWindow* main_window = (QMainWindow*)obs_frontend_get_main_window();
 	QMessageBox mybox(main_window);
 //	mybox->icon(QMessageBox::Information);
-	QString text = "(c) 2018, license GPL v3 or later:\r\n"
+	QString text = "(c) 2018, license GPL v2 or later:\r\n"
 		"Andersama <anderson.john.alexander@gmail.com>\r\n"
 		"pkv \r\n <pkv.stream@gmail.com>\r\n";
 	mybox.setText(text);
@@ -228,6 +570,63 @@ static bool credits(obs_properties_t *props,
 	mybox.exec();
 	return true;
 }
+
+void asio_selector_init() {
+	if (asioselector == NULL) {
+		asioselector = new AsioSelector();
+		const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
+		size_t numOfDevices = getDeviceCount();
+		long minBuf;
+		long maxBuf;
+		long BufPref;
+		long gran;
+		std::vector<double> sample_rates = { 44100, 48000 };
+		std::vector<std::string> audio_formats = { "16 Bit Int", "32 Bit Int", "32 Bit Float" };
+		for (size_t i = 0; i < numOfDevices; i++) {
+			deviceInfo = Pa_GetDeviceInfo(i);
+			PaError err;
+			err = PaAsio_GetAvailableBufferSizes(i, &minBuf, &maxBuf, &BufPref, &gran);
+			std::vector<uint64_t> buffer_sizes;
+
+			if (gran == -1) {
+				uint64_t gran_buffer = minBuf;
+				while (gran_buffer <= maxBuf) {
+					buffer_sizes.push_back(gran_buffer);
+					gran_buffer *= 2;
+				}
+			}
+			else if (gran == 0) {
+				size_t gran_buffer = minBuf;
+				buffer_sizes.push_back(gran_buffer);
+			}
+			else if (gran > 0) {
+				size_t gran_buffer = minBuf;
+				while (gran_buffer <= maxBuf) {
+					buffer_sizes.push_back(gran_buffer);
+					gran_buffer += gran;
+				}
+			}
+
+			asioselector->addDevice(std::string(deviceInfo->name), sample_rates, buffer_sizes, audio_formats);
+		}
+		asioselector->setActiveDeviceUnique(true);
+		asioselector->setSaveCallback(save_asio_device);
+
+	}
+}
+
+static bool asio_selector(obs_properties_t *props,
+	obs_property_t *property, void *data) {
+	QMainWindow* main_window = (QMainWindow*)obs_frontend_get_main_window();
+	//QDialog dialog(main_window);
+	//static AsioSelector w;
+	asio_selector_init();
+	asioselector->show();
+	
+	return true;
+	//return dialog.exec();
+}
+
 // call the control panel
 static bool DeviceControlPanel(obs_properties_t *props, 
 	obs_property_t *property, void *data) {
@@ -238,7 +637,12 @@ static bool DeviceControlPanel(obs_properties_t *props,
 
 	HWND asio_main_hwnd = (HWND)obs_frontend_get_main_window_handle();
 	// stop the stream
-	if (Pa_IsStreamActive(paasiodata->stream)){
+	err = Pa_IsStreamActive(paasiodata->stream);
+	if (err == 1) {
+		err = Pa_CloseStream(paasiodata->stream);
+		if (err != paNoError) {
+			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));	
+		}
 		err = Pa_Terminate();
 		if (err != paNoError) {
 			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
@@ -340,7 +744,7 @@ bool canSamplerate(int device_index, int sample_rate) {
 	outputParameters.suggestedLatency = deviceInfo->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL; 
 
-	err = Pa_IsFormatSupported(&inputParameters, &outputParameters, sample_rate);
+	err = Pa_IsFormatSupported(&inputParameters, &outputParameters, (double)sample_rate);
 	return (err == paFormatIsSupported) ? true : false;
 
 }
@@ -676,6 +1080,8 @@ static void * asio_create(obs_data_t *settings, obs_source_t *source)
 	user_data->stream = NULL;
 	data->set_user_data(user_data);
 
+//	load_asio_gui(asioselector, NULL);
+
 	// check that we're accessing only asio devices
 	//assert(Pa_GetHostApiInfo(Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->hostApi)->type == paASIO);
 	PaError err = Pa_Initialize();
@@ -725,6 +1131,7 @@ void asio_update(void *vptr, obs_data_t *settings)
 	uint16_t BufferSize;
 	unsigned int channels;
 	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
+	PaAsioDeviceInfo *asioInfo = new PaAsioDeviceInfo;
 	int res, device_index;
 	bool reset = false;
 	bool resetDevice = false;
@@ -855,9 +1262,9 @@ void asio_update(void *vptr, obs_data_t *settings)
 			else if (rate == 48000 && !canDo48 && canDo44) {
 				streamRate = 44100;
 			}
-			device_buffer * device = device_list[device_index];
+			device_buffer * devicebuf = device_list[device_index];
 			listener->disconnect();
-			if (device->get_listener_count() > 0) {
+			if (devicebuf->get_listener_count() > 0) {
 				
 			}
 			else {
@@ -869,13 +1276,21 @@ void asio_update(void *vptr, obs_data_t *settings)
 				//user_data->info;
 				//user_data->settings;
 				//user_data->stream;
-				device->prep_circle_buffer(pref_buf);
-				device->prep_events(deviceInfo->maxInputChannels);
-				device->prep_buffers(pref_buf, deviceInfo->maxInputChannels, BitDepth, streamRate);
+				devicebuf->prep_circle_buffer(pref_buf);
+				devicebuf->prep_events(deviceInfo->maxInputChannels);
+				devicebuf->prep_buffers(pref_buf, deviceInfo->maxInputChannels, BitDepth, streamRate);
 
 				err = Pa_OpenStream(stream, inParam, NULL, streamRate,
-					pref_buf, paClipOff, create_asio_buffer, device);
-				//data->stream = stream; // update to new stream
+					pref_buf, paClipOff, create_asio_buffer, devicebuf);
+				user_data->stream = *stream; // update to new stream
+				user_data->settings = settings;
+				asioInfo->commonDeviceInfo = *deviceInfo;
+				asioInfo->minBufferSize = min_buf;
+				asioInfo->maxBufferSize = max_buf;
+				asioInfo->preferredBufferSize = pref_buf;
+				asioInfo->bufferGranularity = gran;
+				user_data->info = asioInfo;
+				listener->set_user_data(user_data);
 
 				if (err == paNoError) {
 					blog(LOG_INFO, "ASIO Stream successfully opened.\n");
@@ -890,11 +1305,11 @@ void asio_update(void *vptr, obs_data_t *settings)
 						if (err == paInvalidSampleRate) {
 							if (rate == 44100 && canDo48) {
 								err = Pa_OpenStream(stream, inParam, NULL, 48000,
-									pref_buf, paClipOff, create_asio_buffer, device);
+									pref_buf, paClipOff, create_asio_buffer, devicebuf);
 							}
 							else if (rate == 48000 && canDo44) {
 								err = Pa_OpenStream(stream, inParam, NULL, 44100,
-									pref_buf, paClipOff, create_asio_buffer, device);
+									pref_buf, paClipOff, create_asio_buffer, devicebuf);
 							}
 
 						}
@@ -904,8 +1319,9 @@ void asio_update(void *vptr, obs_data_t *settings)
 					blog(LOG_ERROR, "Could not open the stream \n");
 					blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 				}
+
 			}
-			device->add_listener(listener);
+			devicebuf->add_listener(listener);
 		}
 	}
 
@@ -1005,6 +1421,8 @@ obs_properties_t * asio_get_properties(void *unused)
 	obs_property_set_long_description(console, console_descr.c_str());
 	obs_property_t *button = obs_properties_add_button(props, "credits", "CREDITS", credits);
 	
+	obs_property_t *gui = obs_properties_add_button(props, "asio gui", "main device", asio_selector);
+
 	//QLabel test;
 	//test.setText(QString("test"));
 	//QMainWindow* main_window = (QMainWindow*)obs_frontend_get_main_window();
