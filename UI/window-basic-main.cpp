@@ -1060,6 +1060,10 @@ bool OBSBasic::InitBasicConfigDefaults()
 			true);
 	config_set_default_bool  (basicConfig, "AdvOut", "DynamicBitrateAdv",
 			false);
+	config_set_default_int(basicConfig, "AdvOut", "DynamicBitrateAdvDown",
+		15);
+	config_set_default_int(basicConfig, "AdvOut", "DynamicBitrateAdvUp",
+		10);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1);
 	config_set_default_string(basicConfig, "AdvOut", "Encoder", "obs_x264");

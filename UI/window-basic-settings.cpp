@@ -352,6 +352,8 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->advOutTrack6,         CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutApplyService,   CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutDynamic,        CHECK_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutDynamicDown,    SCROLL_CHANGED, OUTPUTS_CHANGED);
+	HookWidget(ui->advOutDynamicUp,      SCROLL_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecType,        COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecPath,        EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutNoSpace,        CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -1567,9 +1569,15 @@ void OBSBasicSettings::LoadAdvOutputStreamingSettings()
 			"ApplyServiceSettings");
 	bool dynamicBitrateAdv = config_get_bool(main->Config(), "AdvOut",
 			"DynamicBitrateAdv");
+	int dynamicBitrateAdvDown = config_get_int(main->Config(), "AdvOut",
+		"DynamicBitrateAdvDown");
+	int dynamicBitrateAdvUp = config_get_int(main->Config(), "AdvOut",
+		"DynamicBitrateAdvUp");
 
 	ui->advOutApplyService->setChecked(applyServiceSettings);
 	ui->advOutDynamic->setChecked(dynamicBitrateAdv);
+	ui->advOutDynamicDown->setValue(dynamicBitrateAdvDown);
+	ui->advOutDynamicUp->setValue(dynamicBitrateAdvUp);
 	ui->advOutUseRescale->setChecked(rescale);
 	ui->advOutRescale->setEnabled(rescale);
 	ui->advOutRescale->setCurrentText(rescaleRes);
@@ -3038,6 +3046,9 @@ void OBSBasicSettings::SaveOutputSettings()
 
 	SaveCheckBox(ui->advOutApplyService, "AdvOut", "ApplyServiceSettings");
 	SaveCheckBox(ui->advOutDynamic, "AdvOut", "DynamicBitrateAdv");
+	SaveSpinBox(ui->advOutDynamicDown, "AdvOut", "DynamicBitrateAdvDown");
+	SaveSpinBox(ui->advOutDynamicUp, "AdvOut", "DynamicBitrateAdvUp");
+
 	SaveComboData(ui->advOutEncoder, "AdvOut", "Encoder");
 	SaveCheckBox(ui->advOutUseRescale, "AdvOut", "Rescale");
 	SaveCombo(ui->advOutRescale, "AdvOut", "RescaleRes");
@@ -4257,7 +4268,6 @@ void OBSBasicSettings::SimpleRecordingEncoderChanged()
 	QString warning;
 	bool advanced = ui->simpleOutAdvanced->isChecked();
 	bool enforceBitrate = ui->simpleOutEnforce->isChecked() || !advanced;
-	bool dynamicBitrate = ui->simpleOutDynamic->isChecked() && advanced;
 
 	OBSService service;
 
@@ -4296,8 +4306,6 @@ void OBSBasicSettings::SimpleRecordingEncoderChanged()
 			warning += SIMPLE_OUTPUT_WARNING("AudioBitrate")
 				.arg(newABitrate);
 		}
-
-		obs_data_set_bool(videoSettings, "DynamicBitrate", dynamicBitrate);
 
 		obs_data_release(videoSettings);
 		obs_data_release(audioSettings);

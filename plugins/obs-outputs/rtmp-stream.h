@@ -108,6 +108,9 @@ struct rtmp_stream {
 	float            mean_congestion;
 	float            congestion_array[CONGESTION_ARRAY_SIZE];
 	size_t           congestion_counter;
+	bool             isAdvanced; //	activates the next two settings (only in Advanced Output Mode)
+	int              bitrate_decrease_rate; // % at which bitrate will decrease each sec
+	int              bitrate_increase_rate; // % at which bitrate will increase every 5 sec
 	/* stores the dynamic bitrate state for UI status bar */
 	enum dynamicBitrateState bitrate_state;
 

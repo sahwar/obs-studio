@@ -1513,6 +1513,10 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			"LowLatencyEnable");
 	bool dynamicBitrateAdv = config_get_bool(main->Config(), "AdvOut",
 			"DynamicBitrateAdv");
+	int dynamicBitrateAdvDown = config_get_int(main->Config(), "AdvOut",
+		"DynamicBitrateAdvDown");
+	int dynamicBitrateAdvUp = config_get_int(main->Config(), "AdvOut",
+		"DynamicBitrateAdvUp");
 	const char* mode = config_get_string(main->Config(), "Output", "Mode");
 	bool isSimpleMode = astrcmpi(mode, "Simple") == 0;
 
@@ -1523,6 +1527,9 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
 	obs_data_set_bool(settings, "DynamicBitrateAdv", dynamicBitrateAdv);
+	obs_data_set_int(settings, "DynamicBitrateAdvDown", dynamicBitrateAdvDown);
+	obs_data_set_int(settings, "DynamicBitrateAdvUp", dynamicBitrateAdvUp);
+
 	obs_data_set_bool(settings, "IsSimpleMode2", isSimpleMode);
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);
