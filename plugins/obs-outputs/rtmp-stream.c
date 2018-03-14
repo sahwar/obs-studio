@@ -963,6 +963,7 @@ static bool rtmp_stream_start(void *data)
 				obs_data_get_bool(settings, "IsSimpleMode2");
 		bool dyn1 = obs_data_get_bool(settings, OPT_DYN_BITRATE_SIMPLE) && isSimpleMode;
 		bool dyn2 = obs_data_get_bool(settings, OPT_DYN_BITRATE_ADV) && !isSimpleMode;
+		stream->isAdvanced = !isSimpleMode;
 		stream->switch_variable_bitrate = dyn1 || dyn2;
 		if (stream->switch_variable_bitrate) {
 			blog(LOG_INFO, "Dynamic bitrate ON: bitrate auto management"
@@ -971,11 +972,23 @@ static bool rtmp_stream_start(void *data)
 		else {
 			blog(LOG_INFO, "Dynamic bitrate OFF");
 		}
+		if (dyn2) {
+			stream->bitrate_decrease_rate = obs_data_get_int(settings,
+					"DynamicBitrateAdvDown");
+			stream->bitrate_increase_rate = obs_data_get_int(settings,
+				"DynamicBitrateAdvUp");
+		}
+		if (dyn1) {
+			stream->bitrate_decrease_rate = 15;
+			stream->bitrate_increase_rate = 10;
+		}
 		obs_data_release(params);
 	} else {
 		stream->initial_bitrate = 2500;
 		stream->dynamic_bitrate = 2500;
 		stream->switch_variable_bitrate = false;
+		stream->bitrate_decrease_rate = 15;
+		stream->bitrate_increase_rate = 10;
 	}
 	stream->last_adjustment_time = os_gettime_ns() / 1000000;
 	stream->last_congestion = 0;
@@ -1145,6 +1158,9 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	int initial_bitrate = stream->initial_bitrate;
 	int previous_bitrate;
 
+	float decrease_rate = (float)stream->bitrate_decrease_rate;
+	float increase_rate = (float)stream->bitrate_increase_rate;
+
 	/* X264_NAL_HRD_CBR=2 incompatible with dynamic variable bitrate.
 	 * Bitrate is adjusted downwards every second by about 10% for QSV and 20%
 	 * for enc-amf & x264 (tests suggest QSV handles the bitrate changes better).
@@ -1165,11 +1181,12 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	if (i_nal_hrd != 2 && stream->switch_variable_bitrate) {
 
 		if (decrease_br) {
-			current_bitrate = isQSV?
-					(int)(current_bitrate / 1.1):(int)(current_bitrate / 1.2);
+			current_bitrate = isQSV && !stream->isAdvanced?
+					(int)(current_bitrate / 1.1):
+					(int)(current_bitrate / (1.0 + decrease_rate/100.0));
 
-			if (current_bitrate < (int)(initial_bitrate / 2)) {
-				current_bitrate = (int)(initial_bitrate / 2);
+			if (current_bitrate < (int)((float)initial_bitrate / 2.0)) {
+				current_bitrate = (int)((float)initial_bitrate / 2.0);
 			}
 
 			stream->dynamic_bitrate = current_bitrate;
@@ -1191,7 +1208,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 		 */
 		if (increase_br) {
 
-			current_bitrate = (int)(current_bitrate * 1.10);
+			current_bitrate = (int)((float)current_bitrate * (1.0 + increase_rate/100));
 
 			if (current_bitrate > initial_bitrate) {
 				current_bitrate = initial_bitrate;

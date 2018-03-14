@@ -1005,11 +1005,14 @@
                      </widget>
                     </item>
                     <item row="5" column="1">
-                      <widget class="QCheckBox" name="simpleOutDynamic">
-                        <property name="text">
-                          <string>Basic.Settings.Output.DynamicBitrate</string>
-                        </property>
-                      </widget>
+                     <widget class="QCheckBox" name="simpleOutDynamic">
+                      <property name="toolTip">
+                       <string>Basic.Settings.Output.DynamicBitrate.Tooltip</string>
+                      </property>
+                      <property name="text">
+                       <string>Basic.Settings.Output.DynamicBitrate</string>
+                      </property>
+                     </widget>
                     </item>
                     <item row="1" column="1">
                      <widget class="QComboBox" name="simpleOutStrEncoder"/>
@@ -1495,7 +1498,86 @@
                              </property>
                             </widget>
                            </item>
-                           <item row="5" column="0">
+                           <item row="4" column="1">
+                            <widget class="QCheckBox" name="advOutDynamic">
+                             <property name="toolTip">
+                              <string>Basic.Settings.Output.Adv.DynamicBitrate.Tooltip</string>
+                             </property>
+                             <property name="text">
+                              <string>Basic.Settings.Output.Adv.DynamicBitrate</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="5" column="1">
+                            <widget class="QWidget" name="widget_13" native="true">
+                             <property name="minimumSize">
+                              <size>
+                               <width>0</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout">
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="advOutDynamicDown">
+                                <property name="toolTip">
+                                 <string>Basic.Settings.Output.Adv.DynamicBitrate.Down.Tooltip</string>
+                                </property>
+                                <property name="maximum">
+                                 <number>25</number>
+                                </property>
+                                <property name="value">
+                                 <number>15</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_66">
+                                <property name="text">
+                                 <string>Basic.Settings.Output.Adv.Dyn.Down</string>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="2">
+                               <widget class="QSpinBox" name="advOutDynamicUp">
+                                <property name="enabled">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="toolTip">
+                                 <string>Basic.Settings.Output.Adv.DynamicBitrate.Up.Tooltip</string>
+                                </property>
+                                <property name="layoutDirection">
+                                 <enum>Qt::LeftToRight</enum>
+                                </property>
+                                <property name="alignment">
+                                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                                </property>
+                                <property name="maximum">
+                                 <number>25</number>
+                                </property>
+                                <property name="value">
+                                 <number>10</number>
+                                </property>
+                                <property name="displayIntegerBase">
+                                 <number>10</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="3">
+                               <widget class="QLabel" name="label_67">
+                                <property name="text">
+                                 <string>Basic.Settings.Output.Adv.Dyn.Up</string>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                             <zorder>advOutDynamicUp</zorder>
+                             <zorder>advOutDynamicUp</zorder>
+                             <zorder>label_66</zorder>
+                             <zorder>label_67</zorder>
+                             <zorder>advOutDynamicDown</zorder>
+                            </widget>
+                           </item>
+                           <item row="7" column="0">
                             <widget class="QCheckBox" name="advOutUseRescale">
                              <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
@@ -1511,20 +1593,13 @@
                              </property>
                             </widget>
                            </item>
-                           <item row="5" column="1">
+                           <item row="7" column="1">
                             <widget class="QComboBox" name="advOutRescale">
                              <property name="enabled">
                               <bool>false</bool>
                              </property>
                              <property name="editable">
                               <bool>true</bool>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="4" column="1">
-                            <widget class="QCheckBox" name="advOutDynamic">
-                             <property name="text">
-                              <string>Basic.Settings.Output.Adv.DynamicBitrate</string>
                              </property>
                             </widget>
                            </item>
@@ -4449,6 +4524,7 @@
   <tabstop>advOutTrack6</tabstop>
   <tabstop>advOutEncoder</tabstop>
   <tabstop>advOutApplyService</tabstop>
+  <tabstop>advOutDynamic</tabstop>
   <tabstop>advOutUseRescale</tabstop>
   <tabstop>advOutRescale</tabstop>
   <tabstop>advOutRecType</tabstop>
@@ -4776,19 +4852,19 @@
   </connection>
   <connection>
    <sender>simpleOutAdvanced</sender>
-    <signal>toggled(bool)</signal>
-    <receiver>simpleOutDynamic</receiver>
-    <slot>setVisible(bool)</slot>
-    <hints>
-      <hint type="sourcelabel">
-        <x>250</x>
-        <y>39</y>
-      </hint>
-      <hint type="destinationlabel">
-        <x>250</x>
-        <y>39</y>
-      </hint>
-    </hints>
+   <signal>toggled(bool)</signal>
+   <receiver>simpleOutDynamic</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>683</x>
+     <y>189</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>683</x>
+     <y>243</y>
+    </hint>
+   </hints>
   </connection>
   <connection>
    <sender>systemTrayEnabled</sender>
@@ -5011,6 +5087,70 @@
     <hint type="destinationlabel">
      <x>250</x>
      <y>39</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>advOutDynamic</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>advOutDynamicUp</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>663</x>
+     <y>209</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>674</x>
+     <y>236</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>advOutDynamic</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>advOutDynamicDown</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>663</x>
+     <y>209</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>424</x>
+     <y>236</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>advOutDynamic</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_66</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>663</x>
+     <y>209</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>225</x>
+     <y>123</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>advOutDynamic</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_67</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>663</x>
+     <y>209</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>814</x>
+     <y>236</y>
     </hint>
    </hints>
   </connection>
