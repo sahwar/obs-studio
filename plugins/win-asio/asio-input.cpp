@@ -238,7 +238,12 @@ static bool DeviceControlPanel(obs_properties_t *props,
 
 	HWND asio_main_hwnd = (HWND)obs_frontend_get_main_window_handle();
 	// stop the stream
-	if (Pa_IsStreamActive(paasiodata->stream)){
+	err = Pa_IsStreamActive(paasiodata->stream);
+	if (err == 1){
+		err = Pa_CloseStream(paasiodata->stream);
+		if (err != paNoError) {
+			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+		}
 		err = Pa_Terminate();
 		if (err != paNoError) {
 			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
@@ -340,7 +345,7 @@ bool canSamplerate(int device_index, int sample_rate) {
 	outputParameters.suggestedLatency = deviceInfo->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL; 
 
-	err = Pa_IsFormatSupported(&inputParameters, &outputParameters, sample_rate);
+	err = Pa_IsFormatSupported(&inputParameters, &outputParameters, (double)sample_rate);
 	return (err == paFormatIsSupported) ? true : false;
 
 }
@@ -538,124 +543,9 @@ int create_asio_buffer(const void *inputBuffer, void *outputBuffer, unsigned lon
 	uint64_t ts = os_gettime_ns();
 	device_buffer *device = (device_buffer*)userData;
 	size_t buf_size = device->get_input_channels() * framesCount * bytedepth_format(device->get_format());
-	device->write_buffer_interleaved(inputBuffer, buf_size, ts);
-
+//	device->write_buffer_interleaved(inputBuffer, buf_size, ts);
+	device->write_buffer_planar(inputBuffer, buf_size, ts);
 	return paContinue;
-	/*
-	asio_data *data = (asio_data *)userData;
-
-	int route[MAX_AUDIO_CHANNELS];
-	int recorded_channels = data->recorded_channels;
-	for (short i = 0; i < MAX_AUDIO_CHANNELS; i++) {
-		if (i < recorded_channels) {
-			route[i] = data->route[i];
-		}
-		else {
-			route[i] = -1; // not necessary, just avoids it being unset
-		}	
-	}
-
-	//uint8_t *buffer to have exactly one byte for each pointer increment
-	uint8_t *inputBuf = (uint8_t *)inputBuffer;
-	uint8_t *outputBuf;
-
-	// won't ever reach that part of code unless we 've made some severe coding error
-	if (recorded_channels > MAX_AUDIO_CHANNELS) {
-		blog(LOG_ERROR, "OBS does not support more than %i channels",
-				MAX_AUDIO_CHANNELS);
-		return paAbort;
-	}
-	///////////////////////////////////////////////////////////////////////////
-	// buffer in Bytes =
-	// number of frames in buffer x number of channels x bitdepth / 8
-	// buffer per channel in Bytes = number of frames in buffer x bitdepth / 8
-
-	int BitDepthBytes = bytedepth_format(data->BitDepth);//data->BitDepth);
-	size_t inputbufSizeBytes = framesCount * BitDepthBytes * data->channels;
-	size_t bufSizePerChannelBytes = framesCount * BitDepthBytes;
-	size_t nbFrames = framesCount;
-	size_t outputbufSizeBytes = bufSizePerChannelBytes * recorded_channels;
-
-	// for interleaved, the size in bytes of a frame is not the same for input
-	// which has all the devices channels and for the buffer passed to obs:
-	// the latter has a different number of channels = recorded_channels
-	size_t outFrameSize = recorded_channels * BitDepthBytes;
-	size_t inputFrameSize = data->channels * BitDepthBytes;
-	// allocate outputBuf
-	outputBuf = (uint8_t *)calloc(outputbufSizeBytes, 1);
-	///////////////////////////////////////////////////////////////////////////
-
-	// interleaved frames
-	for (short i = 0; i < nbFrames; i++) {
-		for (short j = 0; j < recorded_channels; j++) {
-			if (route[j] != -1) {
-				memcpy(outputBuf + i * outFrameSize + j * BitDepthBytes, inputBuf + i * inputFrameSize + route[j] * BitDepthBytes, BitDepthBytes);
-			}
-			// no need to silent the mute channels since they're already calloc'ed to zero == silence
-		}
-	}
-	struct obs_source_audio out;
-	
-	out.data[0] = outputBuf;
-	out.format = AUDIO_FORMAT_FLOAT;
-	out.speakers = asio_channels_to_obs_speakers(recorded_channels);
-	out.samples_per_sec = data->SampleRate;
-	out.frames = nbFrames;
-	out.timestamp = os_gettime_ns() - ((nbFrames * NSEC_PER_SEC) / data->SampleRate);
-
-	if (!data->first_ts) {
-		data->first_ts = out.timestamp;
-	}
-
-	if (out.timestamp > data->first_ts && recorded_channels != 0) {
-		obs_source_output_audio(data->source, &out);
-	}
-
-	return paContinue;
-	*/
-}
-
-bool asio_init(struct asio_data *data)
-{
-//	PaStream** stream = new PaStream*;
-//	PaError err;
-//	int i;
-//	// get info, useful for debug
-//	const   PaDeviceInfo *deviceInfo = new PaDeviceInfo;
-//	int index = get_device_index(data->device);
-//	deviceInfo = Pa_GetDeviceInfo(index);
-//
-//	unsigned int deviceNumber = getDeviceCount();
-//	if (deviceNumber < 1) {
-//		blog(LOG_ERROR, "\nNo audio devices found!\n");
-//	}
-//	/* stream parameters */
-//	PaStreamParameters *inParam = new PaStreamParameters();
-//	inParam->channelCount = data->channels;
-//	inParam->device = index;
-//	inParam->sampleFormat = obs_to_portaudio_audio_format(data->BitDepth);
-//	inParam->suggestedLatency = 0;
-//	inParam->hostApiSpecificStreamInfo = NULL;
-//	
-//	/* Open an audio I/O stream. */
-//	err = Pa_OpenStream(stream, inParam, NULL, data->SampleRate,
-//		data->BufferSize, paNoFlag, create_asio_buffer,	data); 
-//
-//	data->stream = stream;
-//	if (err != paNoError) {
-//		blog(LOG_ERROR,"Could not open the stream \n");
-//		goto error;
-//	}
-//	// start streaming audio
-//	err = Pa_StartStream(*stream);
-//	if (err != paNoError) {
-//		blog(LOG_ERROR, "Could not start the stream \n");
-//		goto error;
-//	}
-//	return 1;
-//error:
-//	blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
-	return 0;
 }
 
 static void * asio_create(obs_data_t *settings, obs_source_t *source)
@@ -725,6 +615,7 @@ void asio_update(void *vptr, obs_data_t *settings)
 	uint16_t BufferSize;
 	unsigned int channels;
 	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
+	PaAsioDeviceInfo *asioInfo = new PaAsioDeviceInfo;
 	int res, device_index;
 	bool reset = false;
 	bool resetDevice = false;
@@ -777,29 +668,10 @@ void asio_update(void *vptr, obs_data_t *settings)
 		}
 
 		rate = (int)obs_data_get_int(settings, "sample rate");
-		/*
-		if (data->SampleRate != (int)rate) {
-			data->SampleRate = (int)rate;
-
-			reset = true;
-		}
-		*/
 
 		BitDepth = (audio_format)obs_data_get_int(settings, "bit depth");
-		/*
-		if (data->BitDepth != BitDepth) {
-			data->BitDepth = BitDepth;
-			reset = true;
-		}
-		*/
 
 		BufferSize = (uint16_t)obs_data_get_int(settings, "buffer");
-		/*
-		if (data->BufferSize != BufferSize) {
-			data->BufferSize = BufferSize;
-			reset = true;
-		}
-		*/
 
 		listener->muted_chs = listener->_get_muted_chs(listener->route);
 		listener->unmuted_chs = listener->_get_unmuted_chs(listener->route);
@@ -807,15 +679,12 @@ void asio_update(void *vptr, obs_data_t *settings)
 		listener->input_channels = deviceInfo->maxInputChannels;
 		listener->output_channels = deviceInfo->maxOutputChannels;
 		listener->device_index = device_index;
-		//data->channels = deviceInfo->maxInputChannels;
-		//data->output_channels = deviceInfo->maxOutputChannels;
-		//data->device_index = device_index;
 
 		/* stream parameters */
 
 		inParam->channelCount = deviceInfo->maxInputChannels;//data->channels;
 		inParam->device = device_index;//data->device_index;
-		inParam->sampleFormat = obs_to_portaudio_audio_format(BitDepth);//obs_to_portaudio_audio_format(data->BitDepth);
+		inParam->sampleFormat = obs_to_portaudio_audio_format(BitDepth) | paNonInterleaved;//obs_to_portaudio_audio_format(data->BitDepth);
 		inParam->suggestedLatency = 0;
 		inParam->hostApiSpecificStreamInfo = NULL;
 
@@ -855,9 +724,9 @@ void asio_update(void *vptr, obs_data_t *settings)
 			else if (rate == 48000 && !canDo48 && canDo44) {
 				streamRate = 44100;
 			}
-			device_buffer * device = device_list[device_index];
+			device_buffer * devicebuf = device_list[device_index];
 			listener->disconnect();
-			if (device->get_listener_count() > 0) {
+			if (devicebuf->get_listener_count() > 0) {
 				
 			}
 			else {
@@ -869,13 +738,22 @@ void asio_update(void *vptr, obs_data_t *settings)
 				//user_data->info;
 				//user_data->settings;
 				//user_data->stream;
-				device->prep_circle_buffer(pref_buf);
-				device->prep_events(deviceInfo->maxInputChannels);
-				device->prep_buffers(pref_buf, deviceInfo->maxInputChannels, BitDepth, streamRate);
+				devicebuf->prep_circle_buffer(pref_buf);
+				devicebuf->prep_events(deviceInfo->maxInputChannels);
+				devicebuf->prep_buffers(pref_buf, deviceInfo->maxInputChannels, BitDepth, streamRate);
 
 				err = Pa_OpenStream(stream, inParam, NULL, streamRate,
-					pref_buf, paClipOff, create_asio_buffer, device);
-				//data->stream = stream; // update to new stream
+					pref_buf, paClipOff, create_asio_buffer, devicebuf);
+				user_data->stream = *stream;
+				user_data->settings = settings;
+				asioInfo->commonDeviceInfo = *deviceInfo;
+				asioInfo->commonDeviceInfo = *deviceInfo;
+				asioInfo->minBufferSize = min_buf;
+				asioInfo->maxBufferSize = max_buf;
+				asioInfo->preferredBufferSize = pref_buf;
+				asioInfo->bufferGranularity = gran;
+				user_data->info = asioInfo;
+				listener->set_user_data(user_data);
 
 				if (err == paNoError) {
 					blog(LOG_INFO, "ASIO Stream successfully opened.\n");
@@ -890,11 +768,11 @@ void asio_update(void *vptr, obs_data_t *settings)
 						if (err == paInvalidSampleRate) {
 							if (rate == 44100 && canDo48) {
 								err = Pa_OpenStream(stream, inParam, NULL, 48000,
-									pref_buf, paClipOff, create_asio_buffer, device);
+									pref_buf, paClipOff, create_asio_buffer, devicebuf);
 							}
 							else if (rate == 48000 && canDo44) {
 								err = Pa_OpenStream(stream, inParam, NULL, 44100,
-									pref_buf, paClipOff, create_asio_buffer, device);
+									pref_buf, paClipOff, create_asio_buffer, devicebuf);
 							}
 
 						}
@@ -905,7 +783,7 @@ void asio_update(void *vptr, obs_data_t *settings)
 					blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 				}
 			}
-			device->add_listener(listener);
+			devicebuf->add_listener(listener);
 		}
 	}
 
