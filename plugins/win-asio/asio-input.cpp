@@ -55,6 +55,9 @@ OBS_MODULE_USE_DEFAULT_LOCALE("win-asio", "en-US")
 #define TEXT_BUFFER_1024_SAMPLES        obs_module_text("1024_samples")
 #define TEXT_BITDEPTH                   obs_module_text("BitDepth")
 
+std::vector<asio_listener *> global_listener;
+int *global_index = NULL;
+int *nb_active_listeners;//not necessary; this is the size of global_listener vector.
 
 typedef struct PaAsioDeviceInfo
 {
@@ -72,29 +75,6 @@ struct paasio_data {
 	PaStream *stream;
 	obs_data_t *settings;
 };
-/*
-struct asio_data {
-	obs_source_t *source;
-
-	//asio device and info
-	const char *device;
-	uint8_t device_index;
-	PaAsioDeviceInfo *info;
-	PaStream *stream;
-	obs_data_t *settings;
-
-	audio_format BitDepth; // 16bit or 32 bit
-	int SampleRate;          //44100 or 48000 Hz
-	uint16_t BufferSize;     // number of samples in buffer
-	uint64_t first_ts;       //first timestamp
-
-	//channels info
-	int channels; //total number of input channels
-	int output_channels; // number of output channels of device (not used)
-	int recorded_channels; // number of channels passed from device (including muted) to OBS; is at most 8
-	int route[MAX_AUDIO_CHANNELS]; // stores the channel re-ordering info
-};
-*/
 
 /* ======================================================================= */
 /* conversion between portaudio and obs */
@@ -185,7 +165,7 @@ int get_obs_output_channels() {
 }
 
 // get device count
-size_t getDeviceCount() {
+int getDeviceCount() {
 	int numDevices;
 	numDevices = Pa_GetDeviceCount();
 	if (numDevices < 0)
@@ -196,10 +176,10 @@ size_t getDeviceCount() {
 }
 
 // get the device index
-size_t get_device_index(const char *device) {
+int get_device_index(const char *device) {
 	const   PaDeviceInfo *deviceInfo = new PaDeviceInfo;
-	size_t device_index = 0;
-	size_t numOfDevices = getDeviceCount();
+	int device_index = -1;
+	int numOfDevices = getDeviceCount();
 	for (uint8_t i = 0; i<numOfDevices; i++) {
 		deviceInfo = Pa_GetDeviceInfo(i);
 		if (strcmp(device, deviceInfo->name) == 0) {
@@ -212,6 +192,8 @@ size_t get_device_index(const char *device) {
 ///////////////////////////////
 void asio_update(void *vptr, obs_data_t *settings);
 void asio_destroy(void *vptr);
+obs_properties_t * asio_get_properties(void *unused);
+void asio_get_defaults(obs_data_t *settings);
 ///////////////////////////////
 static bool credits(obs_properties_t *props,
 	obs_property_t *property, void *data)
@@ -354,7 +336,6 @@ bool canSamplerate(int device_index, int sample_rate) {
 static bool fill_out_sample_rates(obs_properties_t *props, obs_property_t *list, obs_data_t *settings) {
 	const char* device = obs_data_get_string(settings, "device_id");
 	const   PaDeviceInfo *deviceInfo = new PaDeviceInfo;
-	bool ret44, ret48;
 	std::string rate;
 
 	obs_property_list_clear(list);
@@ -362,26 +343,12 @@ static bool fill_out_sample_rates(obs_properties_t *props, obs_property_t *list,
 
 	//get the device info
 	deviceInfo = Pa_GetDeviceInfo(index);
-
-	ret44 = canSamplerate(index, 44100);
-	if (ret44) {
-		rate = std::to_string(44100) + " Hz";
-		obs_property_list_add_int(list, rate.c_str(), 44100);
-	}
-	ret48 = canSamplerate(index, 48000);
-	if (ret48) {
-		rate = std::to_string(48000) + " Hz";
-		obs_property_list_add_int(list, rate.c_str(), 48000);
-	}
-	if (!ret44 && !ret48) {
-		blog(LOG_ERROR, "Obs only supports 44100 and 48000 Hz.\n"
-				"Change the smaple rate of your device.\n");
-	}
-	// rearoute samplerate is not probed correctly so ...
-	/*rate = std::to_string(44100) + " Hz";
+// we force support of 44100 and 4800 since they're supported by all asio devices
+// while what the driver reports can be faulty
+	rate = std::to_string(44100) + " Hz";
 	obs_property_list_add_int(list, rate.c_str(), 44100);
 	rate = std::to_string(48000) + " Hz";
-	obs_property_list_add_int(list, rate.c_str(), 48000);*/
+	obs_property_list_add_int(list, rate.c_str(), 48000);
 	return true;
 }
 
@@ -417,7 +384,12 @@ static bool fill_out_buffer_sizes(obs_properties_t *props, obs_property_t *list,
 	}
 
 	obs_property_list_clear(list);
-
+	// bypass gran parameter and allow all buffer sizes from 64 to 1024 (in *2 steps)
+	// the reason is that some devices report badly or lock when buffer is not
+	// set from their own control panel
+	*gran = -1;
+	*minBuf = 64;
+	*maxBuf = 1024;
 	if (*gran == -1) {
 		long long gran_buffer = *minBuf;
 		while (gran_buffer <= *maxBuf) {
@@ -473,19 +445,33 @@ static bool fill_out_buffer_sizes(obs_properties_t *props, obs_property_t *list,
 
 	return true;
 }
+
 static bool asio_device_changed(obs_properties_t *props,
 	obs_property_t *list, obs_data_t *settings)
 {
+	size_t i;
+	bool reset = false;
+	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
 	const char *curDeviceId = obs_data_get_string(settings, "device_id");
 	obs_property_t *sample_rate = obs_properties_get(props, "sample rate");
 	obs_property_t *bit_depth = obs_properties_get(props, "bit depth");
 	obs_property_t *buffer_size = obs_properties_get(props, "buffer");
+	obs_property_t *route[MAX_AUDIO_CHANNELS];
+
+	paasio_data *paasiodata = (paasio_data *)global_listener[0]->get_user_data();
+	obs_data_t *global_settings = paasiodata->settings;
+
+	long cur_rate, cur_buffer;
+	audio_format cur_format;
+
+	// get channel number from output speaker layout set by obs
+	DWORD recorded_channels = get_obs_output_channels();
 	// be sure to set device as current one
 
-	size_t itemCount = obs_property_list_item_count(list);
+	size_t itemCount = obs_property_list_item_count(list);// = getDeviceCount()
 	bool itemFound = false;
 
-	for (size_t i = 0; i < itemCount; i++) {
+	for (i = 0; i < itemCount; i++) {
 		const char *DeviceId = obs_property_list_item_string(list, i);
 		if (strcmp(DeviceId, curDeviceId) == 0) {
 			itemFound = true;
@@ -496,40 +482,118 @@ static bool asio_device_changed(obs_properties_t *props,
 	if (!itemFound) {
 		obs_property_list_insert_string(list, 0, " ", curDeviceId);
 		obs_property_list_item_disable(list, 0, true);
-	}
-	else {
+	} else {
 		DWORD device_index = get_device_index(curDeviceId);
-		obs_property_list_clear(sample_rate);
-		//obs_property_list_insert_int(sample_rate, 0, " ", 0);
-		//obs_property_list_item_disable(sample_rate, 0, true);
-		obs_property_list_clear(bit_depth);
-		//obs_property_list_insert_int(bit_depth, 0, " ", 0);
-		//obs_property_list_item_disable(bit_depth, 0, true);
+		//update global indexes
+		if (global_index == NULL) {
+			global_index = new int;
+			*global_index = 0;
+		} else {
+			if (*global_index != device_index) { // should always be true
+				*global_index = device_index;
+				obs_data_set_int(settings, "sample rate", 48000);
+				obs_data_set_int(settings, "buffer", 512);
+				obs_data_set_int(settings, "bit depth", AUDIO_FORMAT_FLOAT);
+				cur_rate = 48000;
+				cur_buffer = 512;
+				cur_format = AUDIO_FORMAT_FLOAT;
+				obs_data_set_string(global_settings, "device_id", curDeviceId);
+				obs_data_set_int(global_settings, "sample rate", 48000);
+				obs_data_set_int(global_settings, "buffer", 512);
+				obs_data_set_int(global_settings, "bit depth", AUDIO_FORMAT_FLOAT);
+				reset = true;
+			}
+			else {// should never reach here
+				cur_rate = obs_data_get_int(settings, "sample rate");
+				cur_buffer = obs_data_get_int(settings, "buffer");
+				cur_format = (audio_format)obs_data_get_int(settings, "bit depth");
+			}		
 
-		//fill out based on device's settings
-		obs_property_list_clear(buffer_size);
-		//obs_property_list_insert_int(buffer_size, 0, " ", 0);
-		//obs_property_list_item_disable(buffer_size, 0, true);
-		obs_property_set_modified_callback(sample_rate, fill_out_sample_rates);
-		obs_property_set_modified_callback(bit_depth, fill_out_bit_depths);
-		obs_property_set_modified_callback(buffer_size, fill_out_buffer_sizes);
+			// update property menu
+			obs_property_list_clear(sample_rate);
+			obs_property_list_clear(bit_depth);
+			obs_property_list_clear(buffer_size);
 
-		//}
-	}
-	// get channel number from output speaker layout set by obs
-	DWORD recorded_channels = get_obs_output_channels();
+			obs_property_set_modified_callback(sample_rate, fill_out_sample_rates);
+			obs_property_set_modified_callback(bit_depth, fill_out_bit_depths);
+			obs_property_set_modified_callback(buffer_size, fill_out_buffer_sizes);
 
-	obs_property_t *route[MAX_AUDIO_CHANNELS];
-	if (itemFound) {
-		for (unsigned int i = 0; i < recorded_channels; i++) {
-			std::string name = "route " + std::to_string(i);
-			route[i] = obs_properties_get(props, name.c_str());
-			obs_property_list_clear(route[i]);
-			//			obs_data_set_default_int(settings, name.c_str(), -1); // default is muted channels
-			obs_property_set_modified_callback(route[i], fill_out_channels_modified);
+			for (i = 0; i < recorded_channels; i++) {
+				std::string name = "route " + std::to_string(i);
+				route[i] = obs_properties_get(props, name.c_str());
+				obs_property_list_clear(route[i]);
+				obs_property_set_modified_callback(route[i], fill_out_channels_modified);
+			}
+
+			// if the device has been changed then carry the round of updating
+			// the stream and update all listeners.
+			if (reset) {
+				size_t size = global_listener.size();
+				std::vector <paasio_data *> asiodata;
+				for (i = 0; i < size; i++) {
+					asiodata.push_back((paasio_data *)global_listener[i]->get_user_data());
+					obs_data_set_string(asiodata[i]->settings, "device_id", curDeviceId);
+					obs_data_set_int(asiodata[i]->settings, "sample rate", cur_rate);
+					obs_data_set_int(asiodata[i]->settings, "buffer", cur_buffer);
+					obs_data_set_int(asiodata[i]->settings, "bit depth", cur_format);
+					asio_update((void *)global_listener[i], asiodata[i]->settings);
+				}
+			}
 		}
 	}
 
+	return true;
+}
+
+static bool asio_settings_changed(obs_properties_t *props,
+	obs_property_t *list, obs_data_t *settings)
+{
+	size_t i;
+	bool reset = false;
+	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
+	const char *curDeviceId = obs_data_get_string(settings, "device_id");
+	long cur_rate = obs_data_get_int(settings, "sample rate");
+	long cur_buffer = obs_data_get_int(settings, "buffer");
+	audio_format cur_format = (audio_format)obs_data_get_int(settings, "bit depth");
+
+	paasio_data *paasiodata = (paasio_data *)global_listener[0]->get_user_data();
+	obs_data_t *global_settings = paasiodata->settings;
+	long global_rate = obs_data_get_int(global_settings, "sample rate");
+	long global_buffer = obs_data_get_int(global_settings, "buffer");
+	audio_format global_format = (audio_format)obs_data_get_int(global_settings, "bit depth");
+
+	// get channel number from output speaker layout set by obs
+	DWORD recorded_channels = get_obs_output_channels();
+
+	if (cur_rate != global_rate) {
+		obs_data_set_int(global_settings, "sample rate", cur_rate);
+		reset = true;
+	}
+
+	if (cur_buffer != global_buffer) {
+		obs_data_set_int(global_settings, "buffer", cur_buffer);
+		reset = true;
+	}
+
+	if (cur_format != global_format) {
+		obs_data_set_int(global_settings, "buffer", cur_format);
+		reset = true;
+	}
+
+// if the settings have been changed then carry the round of updating
+// the stream and update all listeners.
+	if (reset) {
+		size_t size = global_listener.size();
+		std::vector <paasio_data *> asiodata;
+		for (i = 0; i < size; i++) {
+			asiodata.push_back((paasio_data *)global_listener[i]->get_user_data());
+			obs_data_set_string(asiodata[i]->settings, "device_id", curDeviceId);
+			obs_data_set_int(asiodata[i]->settings, "sample rate", cur_rate);
+			obs_data_set_int(asiodata[i]->settings, "buffer", cur_buffer);
+			obs_data_set_int(asiodata[i]->settings, "bit depth", cur_format);
+			asio_update((void *)global_listener[i], asiodata[i]->settings);
+		}
+	}
 	return true;
 }
 
@@ -553,27 +617,42 @@ static void * asio_create(obs_data_t *settings, obs_source_t *source)
 	//struct asio_data *data = new asio_data;
 	asio_listener *data = new asio_listener();
 	struct paasio_data *user_data = new paasio_data;
+	*nb_active_listeners += 1;
 
 	data->source = source;
 	data->first_ts = 0;
 	data->device_name = "";
-	//data->device = NULL;
-	//data->info = NULL;
-	//data->stream = NULL;
-	//data->settings = settings;
+
+	/* The listener created by the asio source is added to the global listener
+	* vector.
+	*/
+		data->listener_index = global_listener.size();
+	global_listener.push_back(data);
+	
 	user_data->settings = settings;
 	user_data->info = NULL;
 	user_data->stream = NULL;
 	data->set_user_data(user_data);
 
-	// check that we're accessing only asio devices
-	//assert(Pa_GetHostApiInfo(Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->hostApi)->type == paASIO);
+	//sync all created listeners to have the same obs_data_t settings as first listener
+	if (*nb_active_listeners >= 2) {
+		asio_listener *listener = global_listener[0];
+		paasio_data *paasiodata = (paasio_data *)listener->get_user_data();
+		obs_data_t *global_settings = paasiodata->settings;
+		const char* device = obs_data_get_string(global_settings, "device_id");
+		long rate = (long)obs_data_get_int(global_settings, "sample rate");
+		long BufferSize = (long)obs_data_get_int(global_settings, "buffer");
+		audio_format BitDepth = (audio_format)obs_data_get_int(global_settings, "bit depth");
+		obs_data_set_string(settings, "device_id", device);
+		obs_data_set_int(settings, "sample rate", rate);
+		obs_data_set_int(settings, "buffer", BufferSize);
+		obs_data_set_int(settings, "bit depth", BitDepth);
+	}
 	PaError err = Pa_Initialize();
 	if (err != paNoError) {
 		blog(LOG_ERROR, "PortAudio error: %s\n", Pa_GetErrorText(err));
 		return 0;
-	}
-	else {
+	} else {
 		asio_update(data, settings);
 	}
 
@@ -582,41 +661,37 @@ static void * asio_create(obs_data_t *settings, obs_source_t *source)
 
 void asio_destroy(void *vptr)
 {
-	//PaError err;
-	//struct asio_data *data = (asio_data *)vptr;
 	asio_listener *data = (asio_listener *)vptr;
-	/*
-	paasio_data *user_data = (paasio_data *)data->get_user_data();
-	if (Pa_IsStreamActive(user_data->stream)){//data->stream) == 1) {
-		err = Pa_AbortStream(user_data->stream);
-		if (err != paNoError)
-			blog(LOG_ERROR, "PortAudio error: %s\n", Pa_GetErrorText(err));
+	int index = data->listener_index;
+	global_listener.erase(global_listener.begin() + index);
+	// when erasing one listener, one needs to adjust the index of the others
+		for (int i = index; i < global_listener.size(); i++) {
+		global_listener[i]->listener_index = i;
 	}
-	
-	err = Pa_CloseStream(data->stream);
-	if (err != paNoError)
-		blog(LOG_ERROR, "PortAudio error: %s\n", Pa_GetErrorText(err));
-	err = Pa_Terminate();
-	if (err != paNoError)
-		blog(LOG_ERROR, "PortAudio error: %s\n", Pa_GetErrorText(err));
-	*/
 	delete data;
+	*nb_active_listeners -= 1;
+	if (global_listener.size() == 0) {
+		global_index = NULL;
+	}
 }
 
 /* set all settings to asio_data struct */
 void asio_update(void *vptr, obs_data_t *settings)
 {
-	//struct asio_data *data = (asio_data *)vptr;
 	asio_listener *listener = (asio_listener *)vptr;
 	paasio_data *user_data = (paasio_data *)listener->get_user_data();
+	paasio_data *global_data = new paasio_data;
+	obs_data_t *global_settings = NULL;
 	const char *device;
-	unsigned int rate, streamRate;
-	audio_format BitDepth;
-	uint16_t BufferSize;
+	const char *global_device;
+	long rate, global_rate;
+	audio_format BitDepth, global_bitdepth;
+	long BufferSize, global_buffer;
 	unsigned int channels;
 	const PaDeviceInfo *deviceInfo = new PaDeviceInfo;
 	PaAsioDeviceInfo *asioInfo = new PaAsioDeviceInfo;
-	int res, device_index;
+	int res, device_index, cur_index, listener_index;
+	long minBuf, maxBuf, prefBuf, gran;
 	bool reset = false;
 	bool resetDevice = false;
 	PaError err;
@@ -630,77 +705,122 @@ void asio_update(void *vptr, obs_data_t *settings)
 	// get channel number from output speaker layout set by obs
 	int recorded_channels = get_obs_output_channels();
 	listener->input_channels = recorded_channels;
-	//data->recorded_channels = get_obs_output_channels();
 
-	// get device from settings
+
+	listener_index = listener->listener_index;//index the listeners
+
+	/* When obs starts, asio_create calls asio_update. global_index is then NULL
+	 * pointer. The global settings are not yet populated.
+	 * The global settings are set here to either what was stored in json or to default.
+	 */
+	if (global_index == NULL) {//one has just created the first asio source
+		device = obs_data_get_string(settings, "device_id"); // retrieve the device from saved settings, returns NULL if there is no device in json
+		global_index = new int;
+		*global_index = (get_device_index(device) > 0) ? get_device_index(device) : 0; // defaults to first device 
+		global_data = (paasio_data *)global_listener[0]->get_user_data(); // returns the pointer to the user_data of first listener
+		global_settings = global_data->settings; // pointer  to obs_data_t settings of first listener
+		global_rate = obs_data_get_int(settings, "sample rate");//if no setting is found, will use asio_get_defaults : 48000
+		global_buffer = obs_data_get_int(settings, "buffer");
+		global_bitdepth = (audio_format)obs_data_get_int(settings, "bit depth");
+		obs_data_set_int(global_settings, "sample rate", global_rate); // update global settings which were not set previously
+		obs_data_set_int(global_settings, "buffer", global_buffer); //
+		obs_data_set_int(global_settings, "bit depth", global_bitdepth);
+		//global_listener[0]->set_user_data(global_data);// not necessary because we had the right pointer
+	}
+
+/* the following block is used to sync the device to global device whenever there's been a change */
 	device = obs_data_get_string(settings, "device_id");
+	cur_index = get_device_index(device); // =-1 if device = NULL pointer, meaning no device exists in json
+	
+	deviceInfo = Pa_GetDeviceInfo(*global_index);
+	global_device = deviceInfo->name;
 
-	if (device == NULL || device[0] == '\0') {
-		printf("ASIO plugin: Error, Device not yet set \n");
+	// global data is stored in the first listener and copied to others
+	// global_settings is pointer to 'obs_data_t settings' of first listener
+	global_data = (paasio_data *)global_listener[0]->get_user_data();
+	global_settings = global_data->settings;
+
+	if (global_settings != NULL) { // sanity check, is never NULL pointer
+
+		global_buffer = (long)obs_data_get_int(global_settings, "buffer");
+		global_rate = (long)obs_data_get_int(global_settings, "sample rate");
+		global_bitdepth = (audio_format)obs_data_get_int(global_settings, "bit depth");
+		// sync the settings of the current listener to the first listener and saves to json
+		obs_data_set_string(settings, "device_id", global_device);
+		obs_data_set_int(settings, "sample rate", global_rate);
+		obs_data_set_int(settings, "buffer", global_buffer);
+		obs_data_set_int(settings, "bit depth", global_bitdepth);
 	}
-	/*
-	else if(listner->device_name == "")  {
-	//else if (data->device == NULL || data->device[0] == '\0') {
-			
-	//data->device = bstrdup(device);
-		reset = true;
-	}
-	*/
-	else {
-		//data->device = bstrdup(device);
-		listener->device_name = bstrdup(device);
-		if (strcmp(device, listener->device_name.c_str()) != 0) {
-			resetDevice = true;
+
+
+	/* if there is no device selected for current asio source then set it to 
+	 * global one; this will happen for a newly created asio source */
+	if (cur_index == -1 && *global_index >= 0 && *global_index < getDeviceCount() && global_index != NULL) {
+		obs_properties_t *props = asio_get_properties(NULL);
+		obs_property_t *route[MAX_AUDIO_CHANNELS];
+		for (i = 0; i < recorded_channels; i++) {
+			std::string name = "route " + std::to_string(i);
+			route[i] = obs_properties_get(props, name.c_str());
+			obs_property_list_clear(route[i]);
+			obs_property_set_modified_callback(route[i], fill_out_channels_modified);
 		}
 	}
-	if (device != NULL && device[0] != '\0') {
-		device_index = get_device_index(device);
-		listener->device_index = device_index;
-		deviceInfo = Pa_GetDeviceInfo(device_index);	
+	/* if a device exists already for current asio source then it's been synced above to
+	 * global one; we now update listener */
+	if (cur_index != -1) {
 
+		/* load settings : route[] , sample rate, bit depth, buffer */ // unncessary ?
 		for (int i = 0; i < recorded_channels; i++) {
 			std::string route_str = "route " + std::to_string(i);
 			route[i] = (int)obs_data_get_int(settings, route_str.c_str());
 			if (listener->route[i] != route[i]) {
 				listener->route[i] = route[i];
-				reset = true;
 			}
 		}
 
-		rate = (int)obs_data_get_int(settings, "sample rate");
-
+		rate = (long)obs_data_get_int(settings, "sample rate");
+		
 		BitDepth = (audio_format)obs_data_get_int(settings, "bit depth");
 
-		BufferSize = (uint16_t)obs_data_get_int(settings, "buffer");
+		BufferSize = (long)obs_data_get_int(settings, "buffer");
+
+/* sync listener to global device */
+
+		listener->device_index = *global_index;
+		listener->device_name = bstrdup(global_device);
 
 		listener->muted_chs = listener->_get_muted_chs(listener->route);
 		listener->unmuted_chs = listener->_get_unmuted_chs(listener->route);
 
 		listener->input_channels = deviceInfo->maxInputChannels;
 		listener->output_channels = deviceInfo->maxOutputChannels;
-		listener->device_index = device_index;
+		listener->device_index = *global_index;
 
-		/* stream parameters */
+/* stream parameters */
 
-		inParam->channelCount = deviceInfo->maxInputChannels;//data->channels;
-		inParam->device = device_index;//data->device_index;
-		inParam->sampleFormat = obs_to_portaudio_audio_format(BitDepth) | paNonInterleaved;//obs_to_portaudio_audio_format(data->BitDepth);
+		inParam->channelCount = deviceInfo->maxInputChannels;
+		inParam->device = *global_index;
+		inParam->sampleFormat = obs_to_portaudio_audio_format(BitDepth) | paNonInterleaved;
 		inParam->suggestedLatency = 0;
 		inParam->hostApiSpecificStreamInfo = NULL;
 
-		bool canDo44 = false;
-		if (Pa_IsFormatSupported(inParam, NULL, 44100) == paFormatIsSupported)
-		{
-			canDo44 = true;
-		}
-		bool canDo48 = false;
-		if (Pa_IsFormatSupported(inParam, NULL, 48000) == paFormatIsSupported)
-		{
-			canDo48 = true;
-		}
 		/* Open an audio I/O stream. */
-		if (resetDevice) {
+
+		if (BitDepth != 0 && BufferSize != 0) {
+			device_buffer * devicebuf = device_list[*global_index];
+			listener->disconnect();
+			// prepare circular buffer only if there are no clients yet
+			if (devicebuf->get_listener_count() <= 0) {
+				devicebuf->prep_circle_buffer(BufferSize);
+				devicebuf->prep_events(deviceInfo->maxInputChannels);
+				devicebuf->prep_buffers(BufferSize, deviceInfo->maxInputChannels, BitDepth, rate);
+			}
+
 			// close old stream
+			err = Pa_CloseStream(global_data->stream);
+			if (err != paNoError) {
+				blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+			}
 			err = Pa_Terminate();
 			if (err != paNoError) {
 				blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
@@ -709,85 +829,59 @@ void asio_update(void *vptr, obs_data_t *settings)
 			if (err != paNoError) {
 				blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 			}
-		}
-		if (!canDo44 && !canDo48) {
-			blog(LOG_ERROR, "Device error: not supporting 44100 or 48000 Hz sample rate\n"
-				"or not set at either rates.\n"
-				"Obs only supports 44100 and 48000 Hz.\n");
-		} else if (BitDepth != 0  && BufferSize != 0) {
-			if (rate == 44100 && canDo44 || rate == 48000 && canDo48) {
-				streamRate = rate;//data->SampleRate;
-			}
-			else if (rate == 44100 && !canDo44 && canDo48) {
-				streamRate = 48000;
-			}
-			else if (rate == 48000 && !canDo48 && canDo44) {
-				streamRate = 44100;
-			}
-			device_buffer * devicebuf = device_list[device_index];
-			listener->disconnect();
-			if (devicebuf->get_listener_count() > 0) {
-				
+			err = Pa_OpenStream(stream, inParam, NULL, rate,
+				BufferSize, paClipOff, create_asio_buffer, devicebuf);
+			if (err != paNoError) {
+				blog(LOG_ERROR, "Could not open the stream \n");
+				blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+
 			}
 			else {
-				long min_buf;
-				long max_buf;
-				long pref_buf;
-				long gran;
-				PaAsio_GetAvailableBufferSizes(device_index, &min_buf, &max_buf, &pref_buf, &gran);
-				//user_data->info;
-				//user_data->settings;
-				//user_data->stream;
-				devicebuf->prep_circle_buffer(pref_buf);
-				devicebuf->prep_events(deviceInfo->maxInputChannels);
-				devicebuf->prep_buffers(pref_buf, deviceInfo->maxInputChannels, BitDepth, streamRate);
-
-				err = Pa_OpenStream(stream, inParam, NULL, streamRate,
-					pref_buf, paClipOff, create_asio_buffer, devicebuf);
-				user_data->stream = *stream;
-				user_data->settings = settings;
+				blog(LOG_INFO, "ASIO Stream successfully opened.\n");
+				// update user_data
+				err = PaAsio_GetAvailableBufferSizes(*global_index, &minBuf, &maxBuf, &prefBuf, &gran);
+				global_data->stream = *stream;
+				//global_data->settings = settings;
 				asioInfo->commonDeviceInfo = *deviceInfo;
-				asioInfo->commonDeviceInfo = *deviceInfo;
-				asioInfo->minBufferSize = min_buf;
-				asioInfo->maxBufferSize = max_buf;
-				asioInfo->preferredBufferSize = pref_buf;
+				asioInfo->minBufferSize = minBuf;
+				asioInfo->maxBufferSize = maxBuf;
+				asioInfo->preferredBufferSize = prefBuf;
 				asioInfo->bufferGranularity = gran;
-				user_data->info = asioInfo;
-				listener->set_user_data(user_data);
-
+				global_data->info = asioInfo;
+				std::vector <paasio_data *> asiodata;
+				for (i = 0; i < global_listener.size(); i++) {
+					asiodata.push_back((paasio_data *)global_listener[i]->get_user_data());
+					obs_data_set_string(asiodata[i]->settings, "device_id", global_device);
+					obs_data_set_int(asiodata[i]->settings, "sample rate", global_rate);
+					obs_data_set_int(asiodata[i]->settings, "buffer", global_buffer);
+					obs_data_set_int(asiodata[i]->settings, "bit depth", global_bitdepth);
+					asiodata[i]->info = asioInfo;
+					global_listener[i]->set_user_data(asiodata[i]);
+				}
+				// try to start the stream ==> will only occur when the device is first opened
+				err = Pa_StartStream(*stream);
 				if (err == paNoError) {
-					blog(LOG_INFO, "ASIO Stream successfully opened.\n");
-					err = Pa_StartStream(*stream);
-					if (err == paNoError) {
-						blog(LOG_INFO, "ASIO Stream successfully started.\n");
-					}
-					else {
-						blog(LOG_ERROR, "Could not start the stream \n");
-						blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
-						// normally we should never reach that but some drivers can be buggy
-						if (err == paInvalidSampleRate) {
-							if (rate == 44100 && canDo48) {
-								err = Pa_OpenStream(stream, inParam, NULL, 48000,
-									pref_buf, paClipOff, create_asio_buffer, devicebuf);
-							}
-							else if (rate == 48000 && canDo44) {
-								err = Pa_OpenStream(stream, inParam, NULL, 44100,
-									pref_buf, paClipOff, create_asio_buffer, devicebuf);
-							}
-
-						}
-					}
+					blog(LOG_INFO, "ASIO Stream successfully started.\n");
 				}
 				else {
-					blog(LOG_ERROR, "Could not open the stream \n");
+					blog(LOG_ERROR, "Could not start the stream \n");
 					blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 				}
 			}
+
+			// sync user_data of the current listener with the global one
+//			user_data->reset = false;
+//			user_data->stream = global_data->stream;
+////			user_data->settings = global_data->settings;
+//			user_data->info = global_data->info;
+//			listener->set_user_data(user_data);
+
 			devicebuf->add_listener(listener);
+
 		}
 	}
-
 }
+
 
 const char * asio_get_name(void *unused)
 {
@@ -797,8 +891,22 @@ const char * asio_get_name(void *unused)
 
 void asio_get_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_int(settings, "sample rate", 48000);
-	obs_data_set_default_int(settings, "bit depth", AUDIO_FORMAT_FLOAT);
+	if (*nb_active_listeners > 1) {
+		asio_listener *listener = global_listener[0];
+		paasio_data *paasiodata = (paasio_data *)listener->get_user_data();
+		obs_data_t *global_settings = paasiodata->settings;
+		long rate = (long)obs_data_get_int(global_settings, "sample rate");
+		long BufferSize = (long)obs_data_get_int(global_settings, "buffer");
+		audio_format BitDepth = (audio_format)obs_data_get_int(global_settings, "bit depth");
+		obs_data_set_default_int(settings, "sample rate", rate);
+		obs_data_set_default_int(settings, "buffer", BufferSize);
+		obs_data_set_default_int(settings, "bit depth", BitDepth);
+	} else 	{
+		obs_data_set_default_int(settings, "sample rate", 48000);
+		obs_data_set_default_int(settings, "buffer", 512);
+		obs_data_set_default_int(settings, "bit depth", AUDIO_FORMAT_FLOAT);
+	}
+
 	int recorded_channels = get_obs_output_channels();
 	for (unsigned int i = 0; i < recorded_channels; i++) {
 		std::string name = "route " + std::to_string(i);
@@ -820,7 +928,7 @@ obs_properties_t * asio_get_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	props = obs_properties_create();
-	
+	obs_properties_set_flags(props, OBS_PROPERTIES_DEFER_UPDATE);
 	devices = obs_properties_add_list(props, "device_id",
 			obs_module_text("Device"), OBS_COMBO_TYPE_LIST,
 			OBS_COMBO_FORMAT_STRING);
@@ -855,12 +963,14 @@ obs_properties_t * asio_get_properties(void *unused)
 			OBS_COMBO_FORMAT_INT);
 	std::string rate_descr = "Sample rate : number of samples per channel in one second.\n";
 	obs_property_set_long_description(rate, rate_descr.c_str());
-	
+	obs_property_set_modified_callback(rate, asio_settings_changed);
+
 	bit_depth = obs_properties_add_list(props, "bit depth",
 			TEXT_BITDEPTH, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	std::string bit_descr = "Bit depth : size of a sample in bits and format.\n"
 			"Float should be preferred.";
 	obs_property_set_long_description(bit_depth, bit_descr.c_str());
+	obs_property_set_modified_callback(bit_depth, asio_settings_changed);
 
 	buffer_size = obs_properties_add_list(props, "buffer", TEXT_BUFFER_SIZE,
 			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
@@ -874,6 +984,7 @@ obs_properties_t * asio_get_properties(void *unused)
 			"256 should be OK for most cards.\n"
 			"Warning: the real buffer returned by the device may differ";
 	obs_property_set_long_description(buffer_size, buffer_descr.c_str());
+	obs_property_set_modified_callback(buffer_size, asio_settings_changed);
 
 	console = obs_properties_add_button(props, "console",
 		obs_module_text("ASIO driver control panel"), DeviceControlPanel);
@@ -909,6 +1020,7 @@ bool obs_module_load(void)
 	size_t numOfDevices = getDeviceCount();
 	blog(LOG_INFO, "ASIO Devices: %i\n", numOfDevices);
 	device_list.reserve(numOfDevices);
+
 	// Scan through devices for various capabilities
 	for (int i = 0; i<numOfDevices; i++) {
 		deviceInfo = Pa_GetDeviceInfo(i);
@@ -929,6 +1041,9 @@ bool obs_module_load(void)
 		device->device_options.channel_count = deviceInfo->maxInputChannels;
 		device_list.push_back(device);
 	}
+
+	nb_active_listeners = new int;
+	*nb_active_listeners = 0;
 
 	obs_register_source(&asio_input_capture);
 	return true;

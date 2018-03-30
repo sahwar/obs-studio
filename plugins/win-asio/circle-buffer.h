@@ -48,6 +48,7 @@ public:
 	/*asio device and info */
 	std::string device_name;
 	uint8_t device_index;
+	int listener_index; // this is the index of this listener in the listener global vector
 
 	uint64_t first_ts;       //first timestamp
 							 /* channels info */
@@ -106,7 +107,7 @@ public:
 		isASIOActive = false;
 		SetEvent(stop_listening_signal);
 		if (captureThread.Valid()) {
-			WaitForSingleObject(captureThread, INFINITE);
+			WaitForSingleObject(captureThread, INFINITE); // INFINITE);
 			//CloseHandle(captureThread);
 		}
 		ResetEvent(stop_listening_signal);
