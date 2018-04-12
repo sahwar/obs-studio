@@ -6,14 +6,15 @@
 #include <util/platform.h>
 #include <obs.h>
 
-#define OPT_DYN_BITRATE_SIMPLE "DynamicBitrate"
-#define OPT_DYN_BITRATE_ADV "DynamicBitrateAdv"
+#define OPT_DYN_BITRATE "DynamicBitrate"
 
 enum dynamicBitrateState {
-	BITRATE_IS_INITIAL_BITRATE,
-	BITRATE_SWITCHING_LOWER,
-	BITRATE_SWITCHING_STATIONARY,
-	BITRATE_SWITCHING_LARGER
+	BITRATE_EQUAL_INITIAL_BITRATE,
+	BITRATE_SWITCHING_DOWN,
+	BITRATE_SWITCHING_STATIONARY,//means bitrate is lower than initial bitrate so that
+								// the bitrate switching mechanism is still in place
+								// but bitrate stays stationary (until an increase is attempted).
+	BITRATE_SWITCHING_UP
 };
 
 class QLabel;

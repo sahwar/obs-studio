@@ -394,7 +394,7 @@ void SimpleOutput::Update()
 	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
 			"EnforceBitrate");
 	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
-		"DynamicBitrate");
+			"DynamicBitrate");
 
 	const char *custom = config_get_string(main->Config(),
 			"SimpleOutput", "x264Settings");
@@ -741,7 +741,17 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
 	bool dynamicBitrate = config_get_bool(main->Config(), "SimpleOutput",
-		"DynamicBitrate");
+			"DynamicBitrate");
+	int dynamicBitrateDown = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateDown");
+	int dynamicBitrateUp = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateUp");
+	int dynamicBitrateThreshold = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateThreshold");
+	int dynamicBitrateRecoveryTime = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateRecoveryTime");
+	int dynamicBitrateDecreaseTime = config_get_int(main->Config(), "SimpleOutput",
+			"DynamicBitrateDecreaseTime");
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
@@ -750,9 +760,11 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
 	obs_data_set_bool(settings, "DynamicBitrate", dynamicBitrate);
-	const char* mode = config_get_string(main->Config(), "Output", "Mode");
-	bool isSimpleMode = astrcmpi(mode, "Simple") == 0;
-	obs_data_set_bool(settings, "IsSimpleMode1", isSimpleMode);
+	obs_data_set_int(settings, "DynamicBitrateDown", dynamicBitrateDown);
+	obs_data_set_int(settings, "DynamicBitrateUp", dynamicBitrateUp);
+	obs_data_set_int(settings, "DynamicBitrateThreshold", dynamicBitrateThreshold);
+	obs_data_set_int(settings, "DynamicBitrateRecoveryTime", dynamicBitrateRecoveryTime);
+	obs_data_set_int(settings, "DynamicBitrateDecreaseTime", dynamicBitrateDecreaseTime);
 
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);
@@ -1511,14 +1523,18 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			"NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output",
 			"LowLatencyEnable");
-	bool dynamicBitrateAdv = config_get_bool(main->Config(), "AdvOut",
-			"DynamicBitrateAdv");
-	int dynamicBitrateAdvDown = config_get_int(main->Config(), "AdvOut",
-		"DynamicBitrateAdvDown");
-	int dynamicBitrateAdvUp = config_get_int(main->Config(), "AdvOut",
-		"DynamicBitrateAdvUp");
-	const char* mode = config_get_string(main->Config(), "Output", "Mode");
-	bool isSimpleMode = astrcmpi(mode, "Simple") == 0;
+	bool dynamicBitrate = config_get_bool(main->Config(), "AdvOut",
+			"DynamicBitrate");
+	int dynamicBitrateDown = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateDown");
+	int dynamicBitrateUp = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateUp");
+	int dynamicBitrateThreshold = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateThreshold");
+	int dynamicBitrateRecoveryTime = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateRecoveryTime");
+	int dynamicBitrateDecreaseTime = config_get_int(main->Config(), "AdvOut",
+			"DynamicBitrateDecreaseTime");
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "bind_ip", bindIP);
@@ -1526,11 +1542,16 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 			enableNewSocketLoop);
 	obs_data_set_bool(settings, "low_latency_mode_enabled",
 			enableLowLatencyMode);
-	obs_data_set_bool(settings, "DynamicBitrateAdv", dynamicBitrateAdv);
-	obs_data_set_int(settings, "DynamicBitrateAdvDown", dynamicBitrateAdvDown);
-	obs_data_set_int(settings, "DynamicBitrateAdvUp", dynamicBitrateAdvUp);
+	obs_data_set_bool(settings, "DynamicBitrate", dynamicBitrate);
+	obs_data_set_int(settings, "DynamicBitrateDown", dynamicBitrateDown);
+	obs_data_set_int(settings, "DynamicBitrateUp", dynamicBitrateUp);
+	obs_data_set_int(settings, "DynamicBitrateThreshold",
+			dynamicBitrateThreshold);
+	obs_data_set_int(settings, "DynamicBitrateRecoveryTime",
+			dynamicBitrateRecoveryTime);
+	obs_data_set_int(settings, "DynamicBitrateDecreaseTime",
+			dynamicBitrateDecreaseTime);
 
-	obs_data_set_bool(settings, "IsSimpleMode2", isSimpleMode);
 	obs_output_update(streamOutput, settings);
 	obs_data_release(settings);
 

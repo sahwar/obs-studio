@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 #define OBS_ENCODER_CAP_DEPRECATED             (1<<0)
-#define OBS_ENCODER_VIDEO_DYN                  (1<<1)
+#define OBS_ENCODER_VIDEO_DYN                  (1<<1)/**< The video encoder supports dynamic bitrate */
 
 /** Specifies the encoder type */
 enum obs_encoder_type {

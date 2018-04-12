@@ -86,14 +86,12 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	dynStatus->setPixmap(transparentPixmap);
 }
 
-bool OBSBasicStatusBar::GetDynamicBitrateSetting() {
+bool OBSBasicStatusBar::GetDynamicBitrateSetting()
+{
 	obs_data_t *settings = obs_output_get_settings(streamOutput);
-	bool isSimpleMode = obs_data_get_bool(settings, "IsSimpleMode1") ||
-		obs_data_get_bool(settings, "IsSimpleMode2");
-	bool dyn1 = obs_data_get_bool(settings, OPT_DYN_BITRATE_SIMPLE) && isSimpleMode;
-	bool dyn2 = obs_data_get_bool(settings, OPT_DYN_BITRATE_ADV) && !isSimpleMode;
+	bool dyn = obs_data_get_bool(settings, OPT_DYN_BITRATE);
 	obs_data_release(settings);
-	return dyn1 || dyn2;
+	return dyn;
 }
 
 void OBSBasicStatusBar::Activate()
@@ -336,18 +334,20 @@ void OBSBasicStatusBar::UpdateDroppedFrames()
 	lastCongestion = congestion;
 }
 
-void OBSBasicStatusBar::UpdateDynamicBitrateStatus() {
+void OBSBasicStatusBar::UpdateDynamicBitrateStatus()
+{
 	if (!streamOutput)
 		return;
+
 	dynamicBitrateState state = (dynamicBitrateState)obs_output_get_bitrate_state(streamOutput);
 	switch (state) {
-	case BITRATE_IS_INITIAL_BITRATE:
+	case BITRATE_EQUAL_INITIAL_BITRATE:
 		dynStatus->setPixmap(transparentPixmap);
 		break;
-	case BITRATE_SWITCHING_LARGER:
+	case BITRATE_SWITCHING_UP:
 		dynStatus->setPixmap(dynPixmapUp);
 		break;
-	case BITRATE_SWITCHING_LOWER:
+	case BITRATE_SWITCHING_DOWN:
 		dynStatus->setPixmap(dynPixmapDown);
 		break;
 	case BITRATE_SWITCHING_STATIONARY:
@@ -436,11 +436,10 @@ void OBSBasicStatusBar::UpdateStatusBar()
 
 	UpdateDroppedFrames();
 	variableBitrateEnabled = GetDynamicBitrateSetting();
-	if (variableBitrateEnabled) {
+	if (variableBitrateEnabled)
 		UpdateDynamicBitrateStatus();
-	} else {
+	else
 		dynStatus->setPixmap(transparentPixmap);
-	}
 
 	int skipped = video_output_get_skipped_frames(obs_get_video());
 	int total   = video_output_get_total_frames(obs_get_video());

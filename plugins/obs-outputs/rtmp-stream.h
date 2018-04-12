@@ -31,14 +31,13 @@
 #define OPT_NEWSOCKETLOOP_ENABLED "new_socket_loop_enabled"
 #define OPT_LOWLATENCY_ENABLED "low_latency_mode_enabled"
 #define CONGESTION_ARRAY_SIZE 300 // about 10 sec of congestion memory
-#define OPT_DYN_BITRATE_SIMPLE "DynamicBitrate"
-#define OPT_DYN_BITRATE_ADV "DynamicBitrateAdv"
+#define OPT_DYN_BITRATE "DynamicBitrate"
 
 enum dynamicBitrateState {
-	BITRATE_IS_INITIAL_BITRATE,
-	BITRATE_SWITCHING_LOWER, // decreasing bitrate due to congestion
+	BITRATE_EQUAL_INITIAL_BITRATE,
+	BITRATE_SWITCHING_DOWN, // decreasing bitrate due to congestion
 	BITRATE_SWITCHING_STATIONARY, // bitrate unchanged; bitrate < initial bitrate
-	BITRATE_SWITCHING_LARGER // increasing bitrate due to congestion clearing
+	BITRATE_SWITCHING_UP // increasing bitrate due to congestion clearing
 };
 
 //#define TEST_FRAMEDROPS
@@ -108,9 +107,12 @@ struct rtmp_stream {
 	float            mean_congestion;
 	float            congestion_array[CONGESTION_ARRAY_SIZE];
 	size_t           congestion_counter;
-	bool             isAdvanced; //	activates the next two settings (only in Advanced Output Mode)
-	int              bitrate_decrease_rate; // % at which bitrate will decrease each sec
-	int              bitrate_increase_rate; // % at which bitrate will increase every 5 sec
+	int              bitrate_decrease_rate; // % at which bitrate will decrease every decrease_polling_time
+	int              bitrate_increase_rate; // % at which bitrate will increase every recovery_polling_time
+	uint64_t         recovery_polling_time; // time in seconds after which a bitrate increase is attempted if congestion is clearing.
+	uint64_t         decrease_polling_time; // time in milliseconds between two congestion tests;
+						// Bitrate decreases if congestion is found (1 sec by default).
+	int              dynamic_threshold; // congestion threshold in % above which bitrate is decreased.
 	/* stores the dynamic bitrate state for UI status bar */
 	enum dynamicBitrateState bitrate_state;
 

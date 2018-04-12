@@ -959,42 +959,36 @@ static bool rtmp_stream_start(void *data)
 		int bitrate = obs_data_get_int(params, "bitrate");
 		stream->initial_bitrate = bitrate;
 		stream->dynamic_bitrate = bitrate;
-		bool isSimpleMode = obs_data_get_bool(settings, "IsSimpleMode1") ||
-				obs_data_get_bool(settings, "IsSimpleMode2");
-		bool dyn1 = obs_data_get_bool(settings, OPT_DYN_BITRATE_SIMPLE) && isSimpleMode;
-		bool dyn2 = obs_data_get_bool(settings, OPT_DYN_BITRATE_ADV) && !isSimpleMode;
-		stream->isAdvanced = !isSimpleMode;
-		stream->switch_variable_bitrate = dyn1 || dyn2;
-		if (stream->switch_variable_bitrate) {
-			blog(LOG_INFO, "Dynamic bitrate ON: bitrate auto management"
-					" when network congestion is detected.\n");
-		}
-		else {
-			blog(LOG_INFO, "Dynamic bitrate OFF");
-		}
-		if (dyn2) {
-			stream->bitrate_decrease_rate = obs_data_get_int(settings, 
-					"DynamicBitrateAdvDown");
-			stream->bitrate_increase_rate = obs_data_get_int(settings,
-				"DynamicBitrateAdvUp");
-		}
-		if (dyn1) {
-			stream->bitrate_decrease_rate = 15;
-			stream->bitrate_increase_rate = 10;
-		}
 		obs_data_release(params);
 	} else {
 		stream->initial_bitrate = 2500;
 		stream->dynamic_bitrate = 2500;
-		stream->switch_variable_bitrate = false;
-		stream->bitrate_decrease_rate = 15;
-		stream->bitrate_increase_rate = 10;
 	}
+	bool dyn = obs_data_get_bool(settings, OPT_DYN_BITRATE);
+
+	stream->switch_variable_bitrate = dyn;
+	if (stream->switch_variable_bitrate)
+		blog(LOG_INFO, "Dynamic bitrate ON: bitrate auto management"
+			" when network congestion is detected.\n");
+	else
+		blog(LOG_INFO, "Dynamic bitrate OFF");
+
+
+	stream->bitrate_decrease_rate = obs_data_get_int(settings,
+			"DynamicBitrateDown");
+	stream->bitrate_increase_rate = obs_data_get_int(settings,
+			"DynamicBitrateUp");
+	stream->dynamic_threshold = obs_data_get_int(settings,
+			"DynamicBitrateThreshold");
+	stream->recovery_polling_time = (uint64_t)obs_data_get_int(settings,
+			"DynamicBitrateRecoveryTime");
+	stream->decrease_polling_time = (uint64_t)obs_data_get_int(settings,
+			"DynamicBitrateDecreaseTime");
 	stream->last_adjustment_time = os_gettime_ns() / 1000000;
 	stream->last_congestion = 0;
 	stream->congestion_counter = 0;
 	stream->mean_congestion = 0;
-	stream->bitrate_state = BITRATE_IS_INITIAL_BITRATE;
+	stream->bitrate_state = BITRATE_EQUAL_INITIAL_BITRATE;
 	size_t count;
 	for (count = 0; count < CONGESTION_ARRAY_SIZE; count++) {
 		stream->congestion_array[count] = 0;
@@ -1119,7 +1113,8 @@ static void check_to_drop_frames(struct rtmp_stream *stream, bool pframes)
 }
 
 /* dynamic variable bitrate */
-float find_maximum(float a[], int n) {
+float find_maximum(float a[], int n)
+{
 	int c;
 	int max;
 	max = a[0];
@@ -1135,7 +1130,6 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
 	const char *encoder_id = obs_encoder_get_id(vencoder);
 	obs_data_t *params = obs_encoder_get_settings(vencoder);
-	bool isQSV = strcmp(encoder_id, "obs_qsv11") == 0;
 	int i_nal_hrd = strcmp(encoder_id, "obs_x264") == 0 ?
 			obs_data_get_int(params, "i_nal_hrd"): 0;
 
@@ -1160,34 +1154,46 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 
 	float decrease_rate = (float)stream->bitrate_decrease_rate;
 	float increase_rate = (float)stream->bitrate_increase_rate;
+	float dynamic_threshold = 0.01 * (float)stream->dynamic_threshold;
+	uint64_t polling_time = 1000 * stream->recovery_polling_time; // in millisecs
+	uint64_t decrease_polling_time = stream->decrease_polling_time; // set in millisec in UI
 
 	/* X264_NAL_HRD_CBR=2 incompatible with dynamic variable bitrate.
-	 * Bitrate is adjusted downwards every second by about 10% for QSV and 20%
-	 * for enc-amf & x264 (tests suggest QSV handles the bitrate changes better).
-	 * Detection threshold of congestion could be chosen larger than 0.15;
+	 * On default settings, bitrate is adjusted downwards every second by 
+	 * about 15%.
+	 * Detection threshold of congestion is 0.15 on default but could be larger;
 	 * this would mean less reactivity but would allow micro-congestions
-	 * to heal themselves without changing the bitrate.
+	 * to heal themselves without changing too soon the bitrate.
 	 * We define a minimal bitrate at half the initial one.
+	 * The polling time tells how many milliseconds one waits before trying
+	 * to increase the bitrate.
+	 * The larger the polling time, the lower you want the threshold to be
+	 * in order to counter-balance the potential of many drops.
+	 * You also want the increase rate to be set at larger values.
+	 * Ex: if polling_time : 5 sec -> 30 sec
+	 * increase_rate : 10 % -> 30 - 40 %
+	 * threshold: 15 % congestion -> 5 %
+	 * decrease_polling_time: 1000 millisec -> 300 millisec
 	 */
-	bool decrease_br = congestion > 0.15 &&
-		current_bitrate > (int)(initial_bitrate / 2) &&
-		(cur_time_ms - last_adjustment_time) > 1000;
+	bool decrease_br = congestion > dynamic_threshold &&
+			current_bitrate > (int)(initial_bitrate / 2) &&
+			(cur_time_ms - last_adjustment_time) > decrease_polling_time;
 
 	bool increase_br = mean_congestion < 0.05 && max_congestion < 0.15 &&
-		congestion < 0.05 && last_congestion < 0.05 &&
-		current_bitrate < initial_bitrate &&
-		(cur_time_ms - last_adjustment_time) > 5000;
+			congestion < 0.05 && last_congestion < 0.05 &&
+			current_bitrate < initial_bitrate &&
+			(cur_time_ms - last_adjustment_time) > polling_time;
 
 	if (i_nal_hrd != 2 && stream->switch_variable_bitrate) {
-
+		/* Bitrate is adjusted downwards by 15% every second (on default
+		 * settings). The bitrate floor is arbitrarily set at 50 % of initial
+		 * bitrate.
+		 */
 		if (decrease_br) {
-			current_bitrate = isQSV && !stream->isAdvanced?
-					(int)(current_bitrate / 1.1):
-					(int)(current_bitrate / (1.0 + decrease_rate/100.0));
+			current_bitrate = (int)(current_bitrate / (1.0 + decrease_rate / 100.0));
 
-			if (current_bitrate < (int)((float)initial_bitrate / 2.0)) {
+			if (current_bitrate < (int)((float)initial_bitrate / 2.0))
 				current_bitrate = (int)((float)initial_bitrate / 2.0);
-			}
 
 			stream->dynamic_bitrate = current_bitrate;
 			previous_bitrate = obs_data_get_int(params, "bitrate");
@@ -1198,21 +1204,19 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 					"from %i kbps  to %i kbps", congestion * 100, encoder_id,
 					previous_bitrate, current_bitrate);
 			stream->last_adjustment_time = cur_time_ms;
-			stream->bitrate_state = BITRATE_SWITCHING_LOWER;
+			stream->bitrate_state = BITRATE_SWITCHING_DOWN;
 		}
-		/* bitrate is adjusted upwards by 10% every 5 sec. This means it will take at most
-		 * 25 - 30 sec to recover initial bitrate once congestion is cleared
-		 * this interval could be decreased but this would mean more oscillations
-		 * and also more packet drops.
+		/* Bitrate is adjusted upwards by 10% every 5 sec. This means it will take
+		 * at most 25 - 30 sec to recover initial bitrate once congestion is 
+		 * cleared this interval could be decreased but this would mean more
+		 * oscillations and also more packet drops.
 		 * So we choose to have lower quality instead of better with more drops.
 		 */
 		if (increase_br) {
+			current_bitrate = (int)((float)current_bitrate * (1.0 + increase_rate / 100.0));
 
-			current_bitrate = (int)((float)current_bitrate * (1.0 + increase_rate/100));
-
-			if (current_bitrate > initial_bitrate) {
+			if (current_bitrate > initial_bitrate)
 				current_bitrate = initial_bitrate;
-			}
 
 			stream->dynamic_bitrate = current_bitrate;
 			previous_bitrate = obs_data_get_int(params, "bitrate");
@@ -1225,13 +1229,13 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 					previous_bitrate);
 			stream->last_adjustment_time = cur_time_ms;
 			stream->bitrate_state = current_bitrate == initial_bitrate ?
-					BITRATE_IS_INITIAL_BITRATE : BITRATE_SWITCHING_LARGER;
+					BITRATE_EQUAL_INITIAL_BITRATE : BITRATE_SWITCHING_UP;
 		}
 		/* after 1 sec the bitrate state is reset to BITRATE_SWITCHING_STATIONARY */
 		if (!decrease_br && !increase_br &&
 			(cur_time_ms - last_adjustment_time) > 1000) {
 			stream->bitrate_state = current_bitrate == initial_bitrate ?
-					BITRATE_IS_INITIAL_BITRATE : BITRATE_SWITCHING_STATIONARY;
+					BITRATE_EQUAL_INITIAL_BITRATE : BITRATE_SWITCHING_STATIONARY;
 		}
 		stream->last_congestion = congestion;
 	}
@@ -1244,10 +1248,10 @@ static bool add_video_packet(struct rtmp_stream *stream,
 	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
 	const char *encoder_id = obs_encoder_get_id(vencoder);
 	uint32_t caps = obs_get_encoder_caps(encoder_id);
-	/* */
-	if (caps & OBS_ENCODER_VIDEO_DYN) {
+
+	if (caps & OBS_ENCODER_VIDEO_DYN)
 		adjust_bitrate(stream);
-	}
+
 	check_to_drop_frames(stream, false);
 	check_to_drop_frames(stream, true);
 
@@ -1299,7 +1303,6 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 		os_sem_post(stream->send_sem);
 	else
 		obs_encoder_packet_release(&new_packet);
-
 }
 
 static void rtmp_stream_defaults(obs_data_t *defaults)
