@@ -1,63 +1,48 @@
 project(win-asio)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 
-#include("${CMAKE_SOURCE_DIR}/external/FindLibObs.cmake")
 find_package(LibObs REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-if(DISABLE_ASIO)
-	message(STATUS "Asio support disabled")
-	return()
-endif()
-
-find_package(rtaudio)
-if(NOT RTAUDIO_ASIO_FOUND AND ENABLE_ASIO)
-	message(FATAL_ERROR "asio not found but set as enabled")
-elseif(NOT RTAUDIO_ASIO_FOUND)
-	message(STATUS "asio not found, disabling asio plugin")
-	return()
-endif()
-
-# Find includes in corresponding build directories
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-# Instruct CMake to run moc automatically when needed.
-set(CMAKE_AUTOMOC ON)
-
-# Find the QtWidgets library
-find_package(Qt5Widgets)
-
 include_directories(
 	SYSTEM "${CMAKE_SOURCE_DIR}/libobs"
 	"${CMAKE_SOURCE_DIR}/UI/obs-frontend-api"
-	${Qt5Core}
-	${Qt5Widgets}
-	${RTAUDIO_INCLUDE_DIR}
+	${PORTAUDIO_INCLUDE_DIR}
+	${Qt5Core_INCLUDES}
+	${Qt5Widgets_INCLUDES}
 )
 set(win-asio-sdk_HEADERS
-	Rtaudio.h
 	)
 
 set(win-asio_HEADERS
+	circle-buffer.h
 	)
 
 set(win-asio_SOURCES
 	asio-input.cpp
 )
+set(win-asio_QRC
+	asio-input.qrc)
+
+qt5_add_resources(win-asio_QRC_SOURCES ${win-asio_QRC})
 
 add_library(win-asio MODULE
 	${win-asio_SOURCES}
 	${win-asio_HEADERS}
 	${win-asio-sdk_HEADERS}
+	${win-asio_QRC_SOURCES}
 )
+
 target_link_libraries(win-asio
 	libobs
-	w32-pthreads
 	obs-frontend-api
+	${PORTAUDIO_LIBRARY}
 	Qt5::Core
-	Qt5::Widgets
-	${RTAUDIO_LIBRARY}
 	Qt5::Widgets
 )
 
