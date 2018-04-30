@@ -107,6 +107,7 @@ struct rtmp_stream {
 	float            mean_congestion;
 	float            congestion_array[CONGESTION_ARRAY_SIZE];
 	size_t           congestion_counter;
+	bool             increase_just_attempted;
 	int              bitrate_decrease_rate; // % at which bitrate will decrease every decrease_polling_time
 	int              bitrate_increase_rate; // % at which bitrate will increase every recovery_polling_time
 	uint64_t         recovery_polling_time; // time in seconds after which a bitrate increase is attempted if congestion is clearing.

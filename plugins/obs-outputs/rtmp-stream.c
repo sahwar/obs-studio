@@ -988,6 +988,7 @@ static bool rtmp_stream_start(void *data)
 	stream->last_congestion = 0;
 	stream->congestion_counter = 0;
 	stream->mean_congestion = 0;
+	stream->increase_just_attempted = false;
 	stream->bitrate_state = BITRATE_EQUAL_INITIAL_BITRATE;
 	size_t count;
 	for (count = 0; count < CONGESTION_ARRAY_SIZE; count++) {
@@ -1184,6 +1185,9 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 			current_bitrate < initial_bitrate &&
 			(cur_time_ms - last_adjustment_time) > polling_time;
 
+	bool revert_increase_br = congestion > 0.01 && stream->increase_just_attempted;
+	stream->increase_just_attempted = false;
+
 	if (i_nal_hrd != 2 && stream->switch_variable_bitrate) {
 		/* Bitrate is adjusted downwards by 15% every second (on default
 		 * settings). The bitrate floor is arbitrarily set at 50 % of initial
@@ -1219,6 +1223,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 				current_bitrate = initial_bitrate;
 
 			stream->dynamic_bitrate = current_bitrate;
+			stream->increase_just_attempted = true;
 			previous_bitrate = obs_data_get_int(params, "bitrate");
 			obs_data_set_int(params, "bitrate", current_bitrate);
 			obs_encoder_update(vencoder, params);
@@ -1230,6 +1235,20 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 			stream->last_adjustment_time = cur_time_ms;
 			stream->bitrate_state = current_bitrate == initial_bitrate ?
 					BITRATE_EQUAL_INITIAL_BITRATE : BITRATE_SWITCHING_UP;
+		}
+		/* revert bitrate increase if the slightest congestion (1%) is detected */
+		if (revert_increase_br) {
+			previous_bitrate = current_bitrate;
+			current_bitrate = (int)((float)current_bitrate / (1.0 + increase_rate / 100.0));
+			stream->dynamic_bitrate = current_bitrate;
+			obs_data_set_int(params, "bitrate", current_bitrate);
+			obs_encoder_update(vencoder, params);
+			blog(LOG_INFO, "Reverting bitrate increase for encoder %s, "
+					"due to closeness to current maximum bandwidth,"
+					"to %i kbps from previous bitrate %i kbps \n",
+					encoder_id, current_bitrate, previous_bitrate);
+			stream->last_adjustment_time = cur_time_ms;
+			stream->bitrate_state = BITRATE_SWITCHING_DOWN;
 		}
 		/* after 1 sec the bitrate state is reset to BITRATE_SWITCHING_STATIONARY */
 		if (!decrease_br && !increase_br &&
