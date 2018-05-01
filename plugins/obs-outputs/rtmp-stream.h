@@ -112,8 +112,8 @@ struct rtmp_stream {
 	int              bitrate_increase_rate; // % at which bitrate will increase every recovery_polling_time
 	uint64_t         recovery_polling_time; // time in seconds after which a bitrate increase is attempted if congestion is clearing.
 	uint64_t         decrease_polling_time; // time in milliseconds between two congestion tests;
-						// Bitrate decreases if congestion is found (1 sec by default).
-	int              dynamic_threshold; // congestion threshold in % above which bitrate is decreased.
+						// Bitrate decreases if congestion is found (300 ms by default).
+	int              dynamic_threshold; // congestion threshold in % above which bitrate is decreased (5% by default).
 	/* stores the dynamic bitrate state for UI status bar */
 	enum dynamicBitrateState bitrate_state;
 

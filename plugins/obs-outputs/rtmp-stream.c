@@ -1186,7 +1186,8 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 			(cur_time_ms - last_adjustment_time) > polling_time;
 
 	bool revert_increase_br = congestion > 0.01 && stream->increase_just_attempted;
-	stream->increase_just_attempted = false;
+	if ((cur_time_ms - last_adjustment_time) > decrease_polling_time)
+		stream->increase_just_attempted = false;
 
 	if (i_nal_hrd != 2 && stream->switch_variable_bitrate) {
 		/* Bitrate is adjusted downwards by 15% every second (on default
@@ -1249,6 +1250,7 @@ static void adjust_bitrate(struct rtmp_stream *stream)
 					encoder_id, current_bitrate, previous_bitrate);
 			stream->last_adjustment_time = cur_time_ms;
 			stream->bitrate_state = BITRATE_SWITCHING_DOWN;
+			stream->increase_just_attempted = false;
 		}
 		/* after 1 sec the bitrate state is reset to BITRATE_SWITCHING_STATIONARY */
 		if (!decrease_br && !increase_br &&
