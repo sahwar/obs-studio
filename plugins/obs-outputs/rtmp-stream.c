@@ -190,6 +190,12 @@ static void rtmp_stream_stop(void *data, uint64_t ts)
 	} else {
 		obs_output_signal_stop(stream->output, OBS_OUTPUT_SUCCESS);
 	}
+	/* reset to initial bitrate */
+	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+	const char *encoder_id = obs_encoder_get_id(vencoder);
+	obs_data_t *params = obs_encoder_get_settings(vencoder);
+	obs_data_set_int(params, "bitrate", stream->initial_bitrate);
+	obs_data_release(params);
 }
 
 static inline void set_rtmp_str(AVal *val, const char *str)
