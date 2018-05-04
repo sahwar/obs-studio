@@ -109,12 +109,8 @@ public:
 		SetEvent(stop_listening_signal);
 		if (captureThread.Valid()) {
 			WaitForSingleObject(captureThread, INFINITE);
-			//CloseHandle(captureThread);
 		}
 		ResetEvent(stop_listening_signal);
-		//if (this->parameters) {
-		//	delete this->parameters;
-		//}
 
 		return true;
 	}
@@ -310,7 +306,6 @@ public:
 	}
 
 	~device_buffer() {
-		//free resources?
 		if (all_prepped) {
 			delete receive_signals;
 			for (int i = 0; i < buffer_count; i++) {
@@ -590,10 +585,6 @@ public:
 					delete pair;
 					return 0;
 				}
-				//uint64_t t_stamp = os_gettime_ns();
-				//os_sleepto_ns(t_stamp + buffer_time);
-				//os_sleepto_ns(os_gettime_ns() + ((device->frames * NSEC_PER_SEC) / device->samples_per_sec));
-				//Sleep(1);
 				//microsoft docs on the return codes gives the impression that you're supposed to subtract wait_object_0
 			} else if (waitResult == WAIT_OBJECT_0 + 1) {
 				blog(LOG_INFO, "device %l indicated it wanted to disconnect", device->device_index);
@@ -660,10 +651,10 @@ public:
 
 		parameters->asio_listener = listener;
 		parameters->device = this;
-//		listener->parameters = parameters;
+
 		blog(LOG_INFO, "disconnecting any previous connections (source_id: %x)", listener->get_id());
 		listener->disconnect();
-		//CloseHandle(listener->captureThread);
+
 		blog(LOG_INFO, "adding listener for %lu (source: %lu)", device_index, listener->device_index);
 		listener->captureThread = CreateThread(nullptr, 0, this->capture_thread, parameters, 0, nullptr);
 	}
@@ -680,7 +671,7 @@ void add_listener_to_device(asio_listener *listener, device_buffer *buffer) {
 	parameters->device = buffer;
 	blog(LOG_INFO, "disconnecting any previous connections (source_id: %s)", listener->get_id());
 	listener->disconnect();
-	//CloseHandle(listener->captureThread);
+
 	blog(LOG_INFO, "adding listener for %lu (source: %lu)", buffer->device_index, listener->device_index);
 	listener->captureThread = CreateThread(nullptr, 0, buffer->capture_thread, parameters, 0, nullptr);
 }

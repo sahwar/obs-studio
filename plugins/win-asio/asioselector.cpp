@@ -2,7 +2,6 @@
 #include "ui_asioselector.h"
 
 AsioSelector::AsioSelector(QWidget *parent) :
-    //QDialog(parent), // QDockWidget(parent), //QMainWindow(parent),
     QMainWindow(parent),
     ui(new Ui::AsioSelector)
 {
@@ -55,12 +54,12 @@ void AsioSelector::addDevice(std::string device_name, std::vector<double> sample
     //default the first of array
     bool found = false;
     for(size_t i = 0; i < sample_rates.size(); i++){
-        if(sample_rates[i] == default_sample_rate){
+        if (sample_rates[i] == default_sample_rate){
             found = true;
             break;
         }
     }
-    if(found){
+    if (found){
         this->default_sample_rate.push_back(default_sample_rate);
         this->current_sample_rate.push_back(default_sample_rate);
     } else {
@@ -69,13 +68,13 @@ void AsioSelector::addDevice(std::string device_name, std::vector<double> sample
     }
 
     found = false;
-    for(size_t i = 0; i < buffer_sizes.size(); i++){
-        if(buffer_sizes[i] == default_buffer_size){
+    for (size_t i = 0; i < buffer_sizes.size(); i++){
+        if (buffer_sizes[i] == default_buffer_size){
             found = true;
             break;
         }
     }
-    if(found){
+    if (found) {
         this->default_buffer_size.push_back(default_buffer_size);
         this->current_buffer_size.push_back(default_buffer_size);
     } else {
@@ -84,13 +83,13 @@ void AsioSelector::addDevice(std::string device_name, std::vector<double> sample
     }
 
     found = false;
-    for(size_t i = 0; i < audio_formats.size(); i++){
-        if(audio_formats[i] == default_audio_format){
+    for (size_t i = 0; i < audio_formats.size(); i++) {
+        if (audio_formats[i] == default_audio_format) {
             found = true;
             break;
         }
     }
-    if(found){
+    if (found) {
         this->default_audio_format.push_back(default_audio_format);
         this->current_audio_format.push_back(default_audio_format);
     } else {
@@ -108,20 +107,20 @@ void AsioSelector::addDevice(std::string device_name, std::vector<double> sample
 
 void AsioSelector::on_okButton_clicked()
 {
-    if(selected_device >= 0 && selected_device < ui->asioDevicesList->count()){
+    if (selected_device >= 0 && selected_device < ui->asioDevicesList->count()) {
         this->current_sample_rate[selected_device] = ui->asioSampleRate->currentData().toDouble();
         this->current_buffer_size[selected_device] = ui->asioBufferSize->currentData().toULongLong();
         this->current_audio_format[selected_device] = ui->asioDataFormat->currentData().toString().toUtf8().constData();
 
-        if(unique_active_device){
-            if(ui->activeDevice->isChecked()){
+        if (unique_active_device) {
+            if (ui->activeDevice->isChecked()) {
                 size_t i = 0;
                 for(; i < selected_device; i++){
                     this->_device_active[i] = false;
                 }
                 this->_device_active[selected_device] = true;
                 i++;
-                for(; i < this->_device_active.size(); i++){
+                for (; i < this->_device_active.size(); i++) {
                     this->_device_active[i] = false;
                 }
             } else {
@@ -135,8 +134,7 @@ void AsioSelector::on_okButton_clicked()
         this->_use_minimal_latency[selected_device] = ui->lowestLatency->isChecked();
     }
     ui->actionSave->trigger();
-    //if(this->save_callback != NULL)
-        //this->save_callback(this);
+
     this->close();
 }
 
@@ -146,16 +144,16 @@ void AsioSelector::on_applyButton_clicked()
         this->current_sample_rate[selected_device] = ui->asioSampleRate->currentData().toDouble();
         this->current_buffer_size[selected_device] = ui->asioBufferSize->currentData().toULongLong();
         this->current_audio_format[selected_device] = ui->asioDataFormat->currentData().toString().toUtf8().constData();
-;
-        if(unique_active_device){
-            if(ui->activeDevice->isChecked()){
+
+        if (unique_active_device) {
+            if (ui->activeDevice->isChecked()) {
                 size_t i = 0;
-                for(; i < selected_device; i++){
+                for (; i < selected_device; i++) {
                     this->_device_active[i] = false;
                 }
                 this->_device_active[selected_device] = true;
                 i++;
-                for(; i < this->_device_active.size(); i++){
+                for (; i < this->_device_active.size(); i++) {
                     this->_device_active[i] = false;
                 }
             } else {
@@ -169,21 +167,19 @@ void AsioSelector::on_applyButton_clicked()
         this->_use_minimal_latency[selected_device] = ui->lowestLatency->isChecked();
     }
     ui->actionSave->trigger();
-    //if(this->save_callback != NULL)
-       //this->save_callback(this);
 }
 
 void AsioSelector::on_defaultsButton_clicked()
 {
     if(selected_device >= 0 && selected_device < ui->asioDevicesList->count()){
         //long way around via a search to get the default
-        QVariant s = QVariant(default_sample_rate[selected_device]);//sample_rate_list[selected_device][0]);
+        QVariant s = QVariant(default_sample_rate[selected_device]);
         ui->asioSampleRate->setCurrentIndex(ui->asioSampleRate->findText(s.toString()));
 
-        s = QVariant(default_buffer_size[selected_device]);//buffer_size_list[selected_device][0]);
+        s = QVariant(default_buffer_size[selected_device]);
         ui->asioBufferSize->setCurrentIndex(ui->asioBufferSize->findText(s.toString()));
 
-        s = QVariant(default_audio_format[selected_device].c_str());//audio_format_list[selected_device][0].c_str());
+        s = QVariant(default_audio_format[selected_device].c_str());
         ui->asioDataFormat->setCurrentIndex(ui->asioDataFormat->findText(s.toString()));
 
         ui->activeDevice->setChecked( false );
@@ -197,7 +193,7 @@ void AsioSelector::on_asioDevicesList_currentRowChanged(int currentRow)
 {
     this->selected_device = currentRow;
     ui->asioSampleRate->clear();
-    for(size_t i = 0; i < sample_rate_list[currentRow].size(); i++){
+    for (size_t i = 0; i < sample_rate_list[currentRow].size(); i++) {
         QVariant t = QVariant(sample_rate_list[currentRow][i]);
         ui->asioSampleRate->addItem( t.toString(), t );
     }
@@ -205,7 +201,7 @@ void AsioSelector::on_asioDevicesList_currentRowChanged(int currentRow)
     ui->asioSampleRate->setCurrentIndex(ui->asioSampleRate->findText(s.toString()));
 
     ui->asioBufferSize->clear();
-    for(size_t i = 0; i < buffer_size_list[currentRow].size(); i++){
+    for (size_t i = 0; i < buffer_size_list[currentRow].size(); i++) {
         QVariant t = QVariant(buffer_size_list[currentRow][i]);
         ui->asioBufferSize->addItem(t.toString(), t);
     }
@@ -213,7 +209,7 @@ void AsioSelector::on_asioDevicesList_currentRowChanged(int currentRow)
     ui->asioBufferSize->setCurrentIndex(ui->asioBufferSize->findText(s.toString()));
 
     ui->asioDataFormat->clear();
-    for(size_t i = 0; i < audio_format_list[currentRow].size(); i++){
+    for (size_t i = 0; i < audio_format_list[currentRow].size(); i++) {
         QVariant t = QVariant(audio_format_list[currentRow][i].c_str());
         QString ts = t.toString();
         ui->asioDataFormat->addItem(ts, ts);
@@ -230,8 +226,8 @@ void AsioSelector::on_asioDevicesList_currentRowChanged(int currentRow)
 std::vector<uint32_t> AsioSelector::getActiveDevices(){
     std::vector<uint32_t> ret;
     ret.reserve(_device_active.size());
-    for(size_t i = 0; i < _device_active.size(); i++){
-        if(_device_active[i])
+    for (size_t i = 0; i < _device_active.size(); i++) {
+        if (_device_active[i])
             ret.push_back(i);
     }
     ret.shrink_to_fit();
@@ -240,30 +236,23 @@ std::vector<uint32_t> AsioSelector::getActiveDevices(){
 
 void AsioSelector::on_actionSave_As_triggered()
 {
-    /*
-    QFileDialog *pFile = new QFileDialog ( this, "Save Settings", "default", ".json" );
-    pFile->setAcceptMode( QFileDialog::AcceptSave );
-    pFile->setWindowModality( Qt::WindowModal );
-    //QString filename = pFile->getSaveFileName();
-    int statusCode = pFile->exec();
-    */
     if(this->save_as_callback != NULL)
         this->save_as_callback(this);
 }
 
-void AsioSelector::set_save_visibility(bool visible){
+void AsioSelector::set_save_visibility(bool visible)
+{
     ui->actionSave->setVisible(visible);
-    //ui->actionSave->setDisabled(visible);
 }
 
-void AsioSelector::set_save_as_visibility(bool visible){
+void AsioSelector::set_save_as_visibility(bool visible)
+{
     ui->actionSave_As->setVisible(visible);
-    //ui->actionSave_As->setDisabled(visible);
 }
 
-void AsioSelector::set_load_visibility(bool visible){
+void AsioSelector::set_load_visibility(bool visible)
+{
     ui->actionLoad->setVisible(visible);
-    //ui->actionLoad->setDisabled(visible);
 }
 
 void AsioSelector::on_actionSave_triggered()
