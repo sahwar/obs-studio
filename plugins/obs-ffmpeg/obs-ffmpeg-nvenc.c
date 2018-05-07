@@ -234,6 +234,7 @@ static bool nvenc_update(void *data, obs_data_t *settings)
 
 static bool nvenc_reconfigure(void *data, obs_data_t *settings)
 {
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 19, 101)
 	struct nvenc_encoder *enc = data;
 
 	int bitrate = (int)obs_data_get_int(settings, "bitrate");
@@ -248,7 +249,7 @@ static bool nvenc_reconfigure(void *data, obs_data_t *settings)
 	}
 	if (cbr)
 		enc->context->rc_min_rate = bitrate * 1000;
-
+#endif
 	return true;
 }
 
