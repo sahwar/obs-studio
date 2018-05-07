@@ -11,9 +11,9 @@
 enum dynamicBitrateState {
 	BITRATE_EQUAL_INITIAL_BITRATE,
 	BITRATE_SWITCHING_DOWN,
-	BITRATE_SWITCHING_STATIONARY,//This means bitrate is lower than initial bitrate so that
-								// the bitrate switching mechanism is still in place
-								// but bitrate stays stationary (until an increase is attempted).
+	BITRATE_SWITCHING_STATIONARY,	// This means bitrate is lower than initial bitrate so that
+					// the bitrate switching mechanism is still in place
+					// but bitrate stays stationary (until an increase is attempted).
 	BITRATE_SWITCHING_UP
 };
 
