@@ -768,7 +768,16 @@ static void startup_asio_device(uint32_t index, uint64_t buffer_size,
 	if (!info->stream) {
 		info->stream = new PaStream*;
 	}
+	for (int j = 0; j < global_listener.size(); j++) {
+		global_listener[j]->disconnect();
+	}
+	err = Pa_Terminate();
+	if (err != paNoError) 
+		blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 
+	err = Pa_Initialize();
+	if (err != paNoError) 
+		blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
 	err = Pa_OpenStream(info->stream, &inParam, NULL, sample_rate,
 		buffer_size, paClipOff, create_asio_buffer, devicebuf);
 	if(err == paNoError)
