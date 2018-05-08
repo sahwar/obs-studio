@@ -285,31 +285,33 @@ static bool DeviceControlPanel(obs_properties_t *props,
 
 	HWND asio_main_hwnd = (HWND)obs_frontend_get_main_window_handle();
 	// stops the stream if it is active
-	err = Pa_IsStreamActive(*(paasiodata->stream));
-	if (err == 1) {
-		err = Pa_CloseStream(*(paasiodata->stream));
-		if (err != paNoError) 
-			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
-
-		err = Pa_Terminate();
-		if (err != paNoError) 
-			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
-
-		err = Pa_Initialize();
-		if (err != paNoError) 
-			blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+	if (paasiodata->stream && *(paasiodata->stream)) {
+		err = Pa_IsStreamActive(*(paasiodata->stream));
+		if (err == 1) {
+			err = Pa_CloseStream(*(paasiodata->stream));
+			if (err != paNoError)
+				blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+		}
 	}
+	err = Pa_Terminate();
+	if (err != paNoError) 
+		blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+
+	err = Pa_Initialize();
+	if (err != paNoError) 
+		blog(LOG_ERROR, "PortAudio error : %s\n", Pa_GetErrorText(err));
+
 
 	err = PaAsio_ShowControlPanel(listener->device_index, asio_main_hwnd);
 
 	if (err == paNoError)
-		blog(LOG_INFO, "Console loaded for device %s with index %i\n",
+		blog(LOG_INFO, "Console loaded for device %x with index %i\n",
 			listener->get_id(), listener->device_index);
 	else
 		blog(LOG_ERROR, "Could not load the Console panel; PortAudio error : %s\n", Pa_GetErrorText(err));
 
 	// update round
-	asio_update((void *)listener, paasiodata->settings);
+	obs_module_post_load();
 
 	return true;
 }
@@ -526,7 +528,7 @@ void asio_update(void *vptr, obs_data_t *settings)
 
 	//if we have a valid selected index for a device, connect a listener thread
 	if (cur_index != -1 && cur_index < getDeviceCount()) {
-		listener->device_index = selected_device;
+		listener->device_index = cur_index;
 
 		for (int i = 0; i < recorded_channels; i++) {
 			std::string route_str = "route " + std::to_string(i);
@@ -774,6 +776,11 @@ static void startup_asio_device(uint32_t index, uint64_t buffer_size,
 
 	info->status = err;
 	device_list[index]->set_user_data(info);
+	for (int j = 0; j < global_listener.size(); j++) {
+		paasio_data * user_data = (paasio_data *)global_listener[j]->get_user_data();
+		obs_data_t *settings = user_data->settings;
+		asio_update(global_listener[j], settings);
+	}
 }
 
 static void update_device_selection(AsioSelector* selector)
@@ -839,11 +846,6 @@ static void update_device_selection(AsioSelector* selector)
 						string_format);
 					active_devices_tmp.erase(active_devices_tmp.begin());
 				}
-			}
-			for (int j = 0; j < global_listener.size(); j++) {
-				paasio_data * user_data = (paasio_data *)global_listener[j]->get_user_data();
-				obs_data_t *settings = user_data->settings;
-				asio_update(global_listener[j], settings);
 			}
 		}
 		for (; index < selector->getNumberOfDevices(); index++) {
