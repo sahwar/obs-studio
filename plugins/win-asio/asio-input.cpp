@@ -75,6 +75,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("win-asio", "en-US")
 static obs_data_t *module_settings;
 static char *module_settings_path;
 AsioSelector *device_selector;
+std::vector<asio_listener *> global_listener;
 
 void asio_update(void *vptr, obs_data_t *settings);
 void asio_destroy(void *vptr);
@@ -459,6 +460,8 @@ static void * asio_create(obs_data_t *settings, obs_source_t *source)
 	asio_listener *data = new asio_listener();
 	struct paasio_data *user_data = new paasio_data;
 
+	global_listener.push_back(data);
+
 	data->source = source;
 	data->first_ts = 0;
 	data->device_name = "";
@@ -827,6 +830,11 @@ static void update_device_selection(AsioSelector* selector)
 					active_devices_tmp.erase(active_devices_tmp.begin());
 				}
 			}
+			for (int j = 0; j < global_listener.size(); j++) {
+				paasio_data * user_data = (paasio_data *)global_listener[j]->get_user_data();
+				obs_data_t *settings = user_data->settings;
+				asio_update(global_listener[j], settings);
+			}
 		}
 		for (; index < selector->getNumberOfDevices(); index++) {
 			paasio_data* info = (paasio_data*)device_list[index]->get_user_data();
@@ -1059,4 +1067,10 @@ void obs_module_unload(void)
 		obs_data_release(module_settings);
 
 	delete device_selector;
+
+	for (int i = 0; i < global_listener.size(); i++) {
+		delete global_listener[i];
+	}
+
+	global_listener.clear();
 }

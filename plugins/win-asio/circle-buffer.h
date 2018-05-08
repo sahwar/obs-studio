@@ -562,8 +562,8 @@ public:
 		uint64_t buffer_time = ((device->frames * NSEC_PER_SEC) / device->samples_per_sec);
 
 		while (source && device) {
-			waitResult = WaitForMultipleObjects(3, signals_1, false, INFINITE);
-			waitResult = WaitForMultipleObjects(3, signals_2, false, INFINITE);
+			waitResult = WaitForMultipleObjects(3, signals_1, false, 1000);
+			waitResult = WaitForMultipleObjects(3, signals_2, false, 1000);
 			//not entirely sure that all of these conditions are correct (at the very least this is)
 			if (waitResult == WAIT_OBJECT_0) {
 				while (read_index != device->write_index) {
