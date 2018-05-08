@@ -484,10 +484,20 @@ void asio_destroy(void *vptr)
 {
 	asio_listener *data = (asio_listener *)vptr;
 	data->disconnect();
-	int index = data->listener_index;
+
 	paasio_data *paasiodata = (paasio_data *)data->get_user_data();
+	if (global_listener.size() == 1) {
+		delete paasiodata->stream;
+	}
 	delete paasiodata;
+	for (size_t i = 0; i < global_listener.size(); i++) {
+		if (data == global_listener[i]) {
+			global_listener.erase(global_listener.begin() + i);
+			break;
+		}
+	}
 	delete data;
+
 }
 
 /* set all settings to listener, update global settings, open and start audio stream */
