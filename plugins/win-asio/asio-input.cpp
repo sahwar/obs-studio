@@ -1021,7 +1021,7 @@ bool obs_module_load(void)
 
 	if (main_window) {
 		QAction* menu_action = (QAction*)obs_frontend_add_tools_menu_qaction(
-			obs_module_text("DeviceSettings"));
+			obs_module_text("ASIO Device Settings"));
 
 		auto menu_cb = [] {
 			device_selector->show();
