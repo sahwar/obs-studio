@@ -1483,9 +1483,7 @@ static void default_raw_audio_callback(void *param, size_t mix_idx,
 	if (!data_active(output))
 		return;
 
-	output->info.raw_audio(output->context.data, frames);
-
-	UNUSED_PARAMETER(mix_idx);
+	output->info.raw_audio(output->context.data, mix_idx, frames);
 }
 
 static inline void start_audio_encoders(struct obs_output *output,
@@ -1557,9 +1555,12 @@ static void hook_data_capture(struct obs_output *output, bool encoded,
 					get_video_conversion(output),
 					default_raw_video_callback, output);
 		if (has_audio)
-			audio_output_connect(output->audio, output->mixer_idx,
+			for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
+				audio_output_connect(output->audio, idx,
 					get_audio_conversion(output),
 					default_raw_audio_callback, output);
+			}
+
 	}
 }
 
@@ -1811,10 +1812,12 @@ static void *end_data_capture_thread(void *data)
 		if (has_video)
 			stop_raw_video(output->video,
 					default_raw_video_callback, output);
-		if (has_audio)
-			audio_output_disconnect(output->audio,
-					output->mixer_idx,
-					default_raw_audio_callback, output);
+		if (has_audio) {
+			for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
+				audio_output_disconnect(output->audio,
+					idx, default_raw_audio_callback, output);
+			}
+		}
 	}
 
 	if (has_service)
