@@ -52,7 +52,7 @@ int check_buffer(struct audio_repack *repack,
  * | FL | FR | FC |LFE |( BL | BR )|(SL |SR )|
  */
 
-int repack_squash_swap(struct audio_repack *repack,
+int repack_squash(struct audio_repack *repack,
 		const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0)
@@ -66,20 +66,10 @@ int repack_squash_swap(struct audio_repack *repack,
 	 * in order to avoid sampling issues.
 	 */
 	if (repack->base_src_size == 16) {
-		if (squash == 5) {
-			while (src != esrc) {
-				__m128i target = _mm_load_si128(src++);
-				_mm_storeu_si128((__m128i *)dst, target);
-				dst += 8 - squash;
-			}
-		} else {
-			while (src != esrc) {
-				__m128i target = _mm_load_si128(src++);
-				__m128i buf = _mm_shufflelo_epi16(target, _MM_SHUFFLE(2, 3, 1, 0));
-				__m128i buf2 = _mm_shufflehi_epi16(buf, _MM_SHUFFLE(1, 0, 3, 2));
-				_mm_storeu_si128((__m128i *)dst, buf2);
-				dst += 8 - squash;
-			}
+		while (src != esrc) {
+			__m128i target = _mm_load_si128(src++);
+			_mm_storeu_si128((__m128i *)dst, target);
+			dst += 8 - squash;
 		}
 	}
 	/* Squash empty channels for 9 to 15 channels.
@@ -107,91 +97,17 @@ int audio_repack_init(struct audio_repack *repack,
 	if (sample_bit != 16)
 		return -1;
 
-	switch (repack_mode) {
-	case repack_mode_8to3ch_swap23:
-		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 3 * (16 / 8);
-		repack->extra_dst_size = 5;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_8to4ch_swap23:
-		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 4 * (16 / 8);
-		repack->extra_dst_size = 4;
-		repack->repack_func = &repack_squash_swap;
-		break;
+	repack->base_dst_size = (int)repack_mode * (16 / 8);
+	repack->repack_func = &repack_squash;
 
-	case repack_mode_8to5ch_swap23:
+	if (repack_mode <= 8) {
 		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 5 * (16 / 8);
-		repack->extra_dst_size = 3;
-		repack->repack_func = &repack_squash_swap;
-		break;
+		repack->extra_dst_size = 8 - (int)repack_mode;
+	}
 
-	case repack_mode_8to6ch_swap23:
-		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 6 * (16 / 8);
-		repack->extra_dst_size = 2;
-		repack->repack_func = &repack_squash_swap;
-		break;
-
-	case repack_mode_8to7ch_swap23:
-		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 7 * (16 / 8);
-		repack->extra_dst_size = 1;
-		repack->repack_func = &repack_squash_swap;
-		break;
-
-	case repack_mode_8ch_swap23_swap46_swap57:
-		repack->base_src_size = 8 * (16 / 8);
-		repack->base_dst_size = 8 * (16 / 8);
-		repack->extra_dst_size = 0;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to9ch:
+	if (repack_mode > 8) {
 		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 9 * (16 / 8);
-		repack->extra_dst_size = 7;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to10ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 10 * (16 / 8);
-		repack->extra_dst_size = 6;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to11ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 11 * (16 / 8);
-		repack->extra_dst_size = 5;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to12ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 12 * (16 / 8);
-		repack->extra_dst_size = 4;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to13ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 13 * (16 / 8);
-		repack->extra_dst_size = 3;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to14ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 14 * (16 / 8);
-		repack->extra_dst_size = 2;
-		repack->repack_func = &repack_squash_swap;
-		break;
-	case repack_mode_16to15ch:
-		repack->base_src_size = 16 * (16 / 8);
-		repack->base_dst_size = 15 * (16 / 8);
-		repack->extra_dst_size = 1;
-		repack->repack_func = &repack_squash_swap;
-		break;
-
-	default: return -1;
+		repack->extra_dst_size = 16 - (int)repack_mode;
 	}
 
 	return 0;

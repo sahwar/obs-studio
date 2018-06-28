@@ -65,22 +65,20 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format)
 {
 	switch (format) {
 	case SPEAKERS_2POINT1:
-		return repack_mode_8to3ch_swap23;
+		return repack_mode_8to3ch;
 	case SPEAKERS_4POINT0:
 	case SPEAKERS_QUAD:
 	case SPEAKERS_3POINT1:
-		return repack_mode_8to4ch_swap23;
+		return repack_mode_8to4ch;
 	case SPEAKERS_5POINT0:
 	case SPEAKERS_4POINT1:
-		return repack_mode_8to5ch_swap23;
+		return repack_mode_8to5ch;
 	case SPEAKERS_5POINT1:
 	case SPEAKERS_6POINT0:
-		return repack_mode_8to6ch_swap23;
+		return repack_mode_8to6ch;
 	case SPEAKERS_6POINT1:
 	case SPEAKERS_7POINT0:
-		return repack_mode_8to7ch_swap23;
-	case SPEAKERS_7POINT1:
-		return repack_mode_8ch_swap23_swap46_swap57;
+		return repack_mode_8to7ch;
 	case SPEAKERS_9POINT0:
 		return repack_mode_16to9ch;
 	case SPEAKERS_10POINT0:
