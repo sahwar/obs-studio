@@ -105,7 +105,7 @@ DeckLinkDeviceInstance::DeckLinkDeviceInstance(DeckLink *decklink_,
 {
 	currentPacket.samples_per_sec = 48000;
 	currentPacket.speakers        = SPEAKERS_STEREO;
-	currentPacket.format          = AUDIO_FORMAT_16BIT;
+	currentPacket.format          = AUDIO_FORMAT_32BIT;
 }
 
 DeckLinkDeviceInstance::~DeckLinkDeviceInstance()
@@ -141,6 +141,7 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 
 	if (channelFormat != SPEAKERS_UNKNOWN && channelFormat != SPEAKERS_MONO
 		&& channelFormat != SPEAKERS_STEREO && channelFormat != SPEAKERS_3POINT0
+		&& channelFormat != SPEAKERS_7POINT1
 		&& channelFormat != SPEAKERS_OCTAGONAL
 		&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
 		&& isWin) {
@@ -277,7 +278,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 	if (channelFormat != SPEAKERS_UNKNOWN) {
 		const int channel = ConvertChannelFormat(channelFormat);
 		const HRESULT audioResult = input->EnableAudioInput(
-				bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger,
+				bmdAudioSampleRate48kHz, bmdAudioSampleType32bitInteger,
 				channel);
 		if (audioResult != S_OK)
 			LOG(LOG_WARNING, "Failed to enable audio input; continuing...");
@@ -285,6 +286,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 		if (channelFormat != SPEAKERS_UNKNOWN && channelFormat != SPEAKERS_MONO
 			&& channelFormat != SPEAKERS_STEREO
 			&& channelFormat != SPEAKERS_3POINT0
+			&& channelFormat != SPEAKERS_7POINT1
 			&& channelFormat != SPEAKERS_OCTAGONAL
 			&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
 			&& isWin) {
