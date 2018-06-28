@@ -94,6 +94,9 @@ enum speaker_layout {
 	SPEAKERS_10POINT0,
 	SPEAKERS_11POINT0,
 	SPEAKERS_12POINT0,
+	SPEAKERS_13POINT0,
+	SPEAKERS_14POINT0,
+	SPEAKERS_15POINT0,
 	SPEAKERS_HEXADECAGONAL,
 };
 
@@ -150,6 +153,9 @@ static inline uint32_t get_audio_channels(enum speaker_layout speakers)
 	case SPEAKERS_10POINT0:         return 10;
 	case SPEAKERS_11POINT0:         return 11;
 	case SPEAKERS_12POINT0:         return 12;
+	case SPEAKERS_13POINT0:         return 13;
+	case SPEAKERS_14POINT0:         return 14;
+	case SPEAKERS_15POINT0:         return 15;
 	case SPEAKERS_HEXADECAGONAL:    return 16;
 	case SPEAKERS_UNKNOWN:          return 0;
 	}

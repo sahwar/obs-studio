@@ -65,18 +65,33 @@ int repack_squash_swap(struct audio_repack *repack,
 	/* 2.1 audio does not require re-ordering but still needs squashing
 	 * in order to avoid sampling issues.
 	 */
-	if (squash == 5) {
-		while (src != esrc) {
-			__m128i target = _mm_load_si128(src++);
-			_mm_storeu_si128((__m128i *)dst, target);
-			dst += 8 - squash;
+	if (repack->base_src_size == 16) {
+		if (squash == 5) {
+			while (src != esrc) {
+				__m128i target = _mm_load_si128(src++);
+				_mm_storeu_si128((__m128i *)dst, target);
+				dst += 8 - squash;
+			}
+		} else {
+			while (src != esrc) {
+				__m128i target = _mm_load_si128(src++);
+				__m128i buf = _mm_shufflelo_epi16(target, _MM_SHUFFLE(2, 3, 1, 0));
+				__m128i buf2 = _mm_shufflehi_epi16(buf, _MM_SHUFFLE(1, 0, 3, 2));
+				_mm_storeu_si128((__m128i *)dst, buf2);
+				dst += 8 - squash;
+			}
 		}
-	} else {
+	}
+	/* Squash empty channels for 9 to 15 channels.
+	 */
+	if (repack->base_src_size == 32) {
+		esrc = src + 2 *frame_count;
 		while (src != esrc) {
-			__m128i target = _mm_load_si128(src++);
-			__m128i buf = _mm_shufflelo_epi16(target, _MM_SHUFFLE(2, 3, 1, 0));
-			__m128i buf2 = _mm_shufflehi_epi16(buf, _MM_SHUFFLE(1, 0, 3, 2));
-			_mm_storeu_si128((__m128i *)dst, buf2);
+			__m128i target_l = _mm_load_si128(src++);
+			__m128i target_h = _mm_load_si128(src++);
+			_mm_storeu_si128((__m128i *)dst, target_l);
+			dst += 8;
+			_mm_storeu_si128((__m128i *)dst, target_h);
 			dst += 8 - squash;
 		}
 	}
@@ -131,6 +146,48 @@ int audio_repack_init(struct audio_repack *repack,
 		repack->base_src_size = 8 * (16 / 8);
 		repack->base_dst_size = 8 * (16 / 8);
 		repack->extra_dst_size = 0;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to9ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 9 * (16 / 8);
+		repack->extra_dst_size = 7;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to10ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 10 * (16 / 8);
+		repack->extra_dst_size = 6;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to11ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 11 * (16 / 8);
+		repack->extra_dst_size = 5;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to12ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 12 * (16 / 8);
+		repack->extra_dst_size = 4;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to13ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 13 * (16 / 8);
+		repack->extra_dst_size = 3;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to14ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 14 * (16 / 8);
+		repack->extra_dst_size = 2;
+		repack->repack_func = &repack_squash_swap;
+		break;
+	case repack_mode_16to15ch:
+		repack->base_src_size = 16 * (16 / 8);
+		repack->base_dst_size = 15 * (16 / 8);
+		repack->extra_dst_size = 1;
 		repack->repack_func = &repack_squash_swap;
 		break;
 

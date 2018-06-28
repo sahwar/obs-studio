@@ -74,7 +74,7 @@ static bool build_flv_meta_data(obs_output_t *context,
 	enc_str(&enc, end, "onMetaData");
 
 	*enc++ = AMF_ECMA_ARRAY;
-	enc    = AMF_EncodeInt32(enc, end, a_idx == 0 ? 32 : 27);
+	enc    = AMF_EncodeInt32(enc, end, a_idx == 0 ? 33 : 30);
 
 	enc_num_val(&enc, end, "duration", 0.0);
 	enc_num_val(&enc, end, "fileSize", 0.0);
@@ -136,6 +136,12 @@ static bool build_flv_meta_data(obs_output_t *context,
 			audio_output_get_channels(audio) == 11);
 	enc_bool_val(&enc, end, "12.0",
 			audio_output_get_channels(audio) == 12);
+	enc_bool_val(&enc, end, "13.0",
+			audio_output_get_channels(audio) == 13);
+	enc_bool_val(&enc, end, "14.0",
+			audio_output_get_channels(audio) == 14);
+	enc_bool_val(&enc, end, "15.0",
+			audio_output_get_channels(audio) == 15);
 	enc_bool_val(&enc, end, "16.0",
 			audio_output_get_channels(audio) == 16);
 

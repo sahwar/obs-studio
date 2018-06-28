@@ -49,6 +49,9 @@ static inline int ConvertChannelFormat(speaker_layout format)
 	case SPEAKERS_10POINT0:
 	case SPEAKERS_11POINT0:
 	case SPEAKERS_12POINT0:
+	case SPEAKERS_13POINT0:
+	case SPEAKERS_14POINT0:
+	case SPEAKERS_15POINT0:
 	case SPEAKERS_HEXADECAGONAL:
 		return 16;
 
@@ -78,6 +81,20 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format)
 		return repack_mode_8to7ch_swap23;
 	case SPEAKERS_7POINT1:
 		return repack_mode_8ch_swap23_swap46_swap57;
+	case SPEAKERS_9POINT0:
+		return repack_mode_16to9ch;
+	case SPEAKERS_10POINT0:
+		return repack_mode_16to10ch;
+	case SPEAKERS_11POINT0:
+		return repack_mode_16to11ch;
+	case SPEAKERS_12POINT0:
+		return repack_mode_16to12ch;
+	case SPEAKERS_13POINT0:
+		return repack_mode_16to13ch;
+	case SPEAKERS_14POINT0:
+		return repack_mode_16to14ch;
+	case SPEAKERS_15POINT0:
+		return repack_mode_16to15ch;
 	default:
 		assert(false && "No repack requested");
 		return (audio_repack_mode_t)-1;
@@ -127,10 +144,6 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 	if (channelFormat != SPEAKERS_UNKNOWN && channelFormat != SPEAKERS_MONO
 		&& channelFormat != SPEAKERS_STEREO && channelFormat != SPEAKERS_3POINT0
 		&& channelFormat != SPEAKERS_OCTAGONAL
-		&& channelFormat != SPEAKERS_9POINT0
-		&& channelFormat != SPEAKERS_10POINT0
-		&& channelFormat != SPEAKERS_11POINT0
-		&& channelFormat != SPEAKERS_12POINT0
 		&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
 		&& isWin) {
 
@@ -275,10 +288,6 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_)
 			&& channelFormat != SPEAKERS_STEREO
 			&& channelFormat != SPEAKERS_3POINT0
 			&& channelFormat != SPEAKERS_OCTAGONAL
-			&& channelFormat != SPEAKERS_9POINT0
-			&& channelFormat != SPEAKERS_10POINT0
-			&& channelFormat != SPEAKERS_11POINT0
-			&& channelFormat != SPEAKERS_12POINT0
 			&& channelFormat != SPEAKERS_HEXADECAGONAL && maxdevicechannel >= 8
 			&& isWin) {
 

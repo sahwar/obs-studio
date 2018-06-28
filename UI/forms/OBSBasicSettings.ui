@@ -3549,6 +3549,36 @@
            </item>
            <item>
             <property name="text">
+             <string>10.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>11.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>12.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>13.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>14.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>15.0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>16.0</string>
             </property>
            </item>
