@@ -340,7 +340,6 @@ static bool create_audio_stream(struct ffmpeg_data *data, int idx)
 
 	data->audio_streams[idx] = stream;
 	context                  = data->audio_streams[idx]->codec;
-	context              = data->audio->codec;
 	context->bit_rate    = data->config.audio_bitrate * 1000;
 	context->time_base   = (AVRational){ 1, aoi.samples_per_sec };
 	context->channels    = get_audio_channels(aoi.speakers);
