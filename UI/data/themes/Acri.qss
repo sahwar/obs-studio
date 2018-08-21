@@ -792,6 +792,123 @@ MuteCheckBox::indicator:unchecked:disabled {
 	image: url(./Dark/unmute.png);
 }
 
+/* Master Mixer */
+MonCheckBox {
+	outline: none;
+	margin-left: 5px;
+	padding-right: -5px;
+}
+
+MonCheckBox[themeID="MacOnly"] {
+	outline: none;
+}
+
+MonCheckBox[themeID="Horizontal"] {
+	outline: none;
+	padding-left: -8px;
+	padding-right: 2px;
+}
+
+MonCheckBox::indicator:checked {
+	image: url(./Dark/monON.png);
+}
+
+MonCheckBox::indicator:unchecked {
+	image: url(./Dark/monOFF.png);
+}
+
+MonCheckBox::indicator:checked:hover {
+	image: url(./Dark/monON.png);
+}
+
+MonCheckBox::indicator:checked:focus {
+	image: url(./Dark/monON.png);
+}
+
+MonCheckBox::indicator:unchecked:hover {
+	image: url(./Dark/monOFF.png);
+}
+
+MonCheckBox::indicator:unchecked:focus {
+	image: url(./Dark/monOFF.png);
+}
+
+StreamCheckBox {
+	outline: none;
+	margin-left: 7px; padding-left: 7px; padding-right: -4px;
+}
+
+StreamCheckBox[themeID="MacOnly"] {
+	margin-left: 7px; margin-right: 3px;
+}
+
+StreamCheckBox[themeID="Horizontal"] {
+	outline: none;
+	padding: 0px;
+}
+
+StreamCheckBox::indicator:checked {
+	image: url(:/res/images/streamON.png);
+}
+
+StreamCheckBox::indicator:checked:hover {
+	image: url(:/res/images/streamON.png);
+}
+
+StreamCheckBox::indicator:checked:focus {
+	image: url(:/res/images/streamON.png);
+}
+
+StreamCheckBox::indicator:unchecked {
+	image: url(:/res/images/streamOFF.png);
+}
+
+StreamCheckBox::indicator:unchecked:hover {
+	image: url(:/res/images/streamOFF.png);
+}
+
+StreamCheckBox::indicator:unchecked:focus {
+	image: url(:/res/images/streamOFF.png);
+}
+
+RecCheckBox {
+	outline: none;
+	margin-right: 5px; padding-right: 5px;
+}
+
+RecCheckBox[themeID="MacOnly"] {
+	margin-left: 5px; padding-left: 2px;
+}
+
+RecCheckBox[themeID="Horizontal"] {
+	outline: none;
+	padding: 0px;
+}
+
+RecCheckBox::indicator:checked {
+	image: url(:/res/images/recON.png);
+}
+
+RecCheckBox::indicator:checked:hover {
+	image: url(:/res/images/recON.png);
+}
+
+RecCheckBox::indicator:checked:focus {
+	image: url(:/res/images/recON.png);;
+}
+
+RecCheckBox::indicator:unchecked {
+	image: url(:/res/images/recOFF.png);
+}
+
+RecCheckBox::indicator:unchecked:hover {
+	image: url(:/res/images/recOFF.png);
+}
+
+RecCheckBox::indicator:unchecked:focus {
+	image: url(:/res/images/recOFF.png);
+}
+
 OBSHotkeyLabel[hotkeyPairHover=true] {
 	color: rgba(27, 96, 166);
 }
