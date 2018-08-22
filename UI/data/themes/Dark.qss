@@ -589,6 +589,21 @@ OBSHotkeyLabel[hotkeyPairHover=true] {
 }
 
 /* master mixer */
+MonCheckBox {
+    outline: none;
+}
+
+MonCheckBox[themeID="MacOnly"] {
+    outline: none;
+}
+
+MonCheckBox::indicator:checked {
+    image: url(./Dark/monON.png);
+}
+
+MonCheckBox::indicator:unchecked {
+    image: url(./Dark/monOFF.png);
+}
 
 StreamCheckBox {
     outline: none;

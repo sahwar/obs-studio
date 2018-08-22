@@ -69,8 +69,8 @@ void VolControl::SetMuted(bool checked)
 }
 
 void VolControl::SetMon(bool checked) {
+	obs_audio_mix_lock();
 	obs_source_t **tracks = (obs_source_t **)obs_audio_mix_tracks();
-	obs_source_t *source = tracks[track_index];
 	obs_monitoring_type mt;
 	if (!checked)
 		mt = OBS_MONITORING_TYPE_NONE;
@@ -78,7 +78,10 @@ void VolControl::SetMon(bool checked) {
 		mt = OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
 	else
 		mt = OBS_MONITORING_TYPE_MONITOR_ONLY;
-	obs_source_set_monitoring_type(source, (obs_monitoring_type)mt);
+	if (track_index >= 0 && track_index < MAX_AUDIO_MIXES &&
+		tracks[track_index])
+		obs_source_set_monitoring_type(tracks[track_index], mt);
+	obs_audio_mix_unlock();
 }
 
 void VolControl::SetStream(bool checked) {
@@ -524,7 +527,14 @@ VolControl::VolControl(float *vol, bool *mutePtr, bool showConfig, bool vertical
 	QWidget::connect(rec, SIGNAL(clicked(bool)),
 			this, SLOT(SetRec(bool)));
 
-	bool monON = false;//will need to have settings for that
+	bool monON = false;
+	obs_audio_mix_lock();
+	obs_source_t **tracks = (obs_source_t **)obs_audio_mix_tracks();
+	enum obs_monitoring_type type =
+			(obs_monitoring_type)obs_source_get_monitoring_type(tracks[track_index]);
+	obs_audio_mix_unlock();
+	if (type != OBS_MONITORING_TYPE_NONE)
+		monON = true;
 	mon->setChecked(monON);
 	mon->setAccessibleName(QTStr("VolControl.Mon"));
 	mon->setToolTip(QTStr("VolControl.Mon.Tooltip"));

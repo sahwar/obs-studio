@@ -51,6 +51,21 @@ MuteCheckBox::indicator:unchecked {
     image: url(:/res/images/unmute.png);
 }
 
+MonCheckBox {
+    outline: none;
+}
+
+MonCheckBox[themeID="MacOnly"] {
+    outline: none;
+}
+
+MonCheckBox::indicator:checked {
+    image: url(:/res/images/monON.png);
+}
+
+MonCheckBox::indicator:unchecked {
+    image: url(:/res/images/monOFF.png);
+}
 StreamCheckBox {
     outline: none;
     margin-left: 7px; padding-left: 7px; padding-right: -4px;
