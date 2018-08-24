@@ -595,6 +595,7 @@ OBSHotkeyLabel[hotkeyPairHover=true] {
 /* master mixer */
 MonCheckBox {
     outline: none;
+    margin-left: 5px
 }
 
 MonCheckBox[themeID="MacOnly"] {

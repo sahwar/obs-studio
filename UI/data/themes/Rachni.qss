@@ -776,6 +776,7 @@ MuteCheckBox::indicator:unchecked:disabled {
 /***********************************/
 MonCheckBox {
 	outline: none;
+	margin-left: 4px;
 }
 
 MonCheckBox[themeID="MacOnly"] {
