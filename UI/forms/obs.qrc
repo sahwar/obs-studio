@@ -25,6 +25,8 @@
     <file>images/recOFF.png</file>
     <file>images/monON.png</file>
     <file>images/monOFF.png</file>
+    <file>images/worldON.png</file>
+    <file>images/worldOFF.png</file>
   </qresource>
   <qresource prefix="/settings">
     <file>images/settings/advanced.png</file>

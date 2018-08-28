@@ -60,6 +60,20 @@ void VolControl::OBSMonitoringEnabled(void *data, calldata_t *calldata) {
 			Q_ARG(bool, monitoring));
 }
 
+void VolControl::SendEnabled(bool checked) {
+	if (send->isChecked() != checked)
+		send->setChecked(checked);
+	SetSends(checked);
+}
+
+void VolControl::OBSSend(void *data, calldata_t *calldata) {
+	VolControl *volControl = static_cast<VolControl*>(data);
+	bool send = calldata_bool(calldata, "send");
+
+	QMetaObject::invokeMethod(volControl, "SendEnabled",
+			Q_ARG(bool, send));
+}
+
 void VolControl::VolumeChanged()
 {
 	slider->blockSignals(true);
@@ -83,10 +97,29 @@ void VolControl::SetMuted(bool checked)
 		*mutePtr = checked;
 }
 
+void VolControl::SetSends(bool checked)
+{
+	obs_monitoring_type mt;
+	if (!(mon->isChecked()))
+		mt = OBS_MONITORING_TYPE_NONE;
+	else if (checked)
+		mt = OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
+	else
+		mt = OBS_MONITORING_TYPE_MONITOR_ONLY;
+	obs_source_set_monitoring_type(source, mt);
+	obs_source_set_sends(source, checked);
+	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
+	main->InitAudioMasterMixer();
+}
+
 void VolControl::SetMon(bool checked)
 {
 	obs_monitoring_type mt;
-	bool isOutput = stream->isChecked() || rec->isChecked();
+	bool isOutput;
+	if (track_index >= 0 && track_index < MAX_AUDIO_MIXES)
+		isOutput = stream->isChecked() || rec->isChecked();
+	else if (track_index < 0)
+		isOutput = send->isChecked();
 	if (!checked)
 		mt = OBS_MONITORING_TYPE_NONE;
 	else if (isOutput)
@@ -227,6 +260,8 @@ VolControl::VolControl(OBSSource source_, bool *mutePtr, bool showConfig, bool v
 	mute      = new MuteCheckBox();
 #if defined(_WIN32) || defined(__APPLE__) || HAVE_PULSEAUDIO
 	mon = new MonCheckBox();
+	if (trackIndex < 0)
+		send = new SendsCheckBox();
 #endif
 	track_index = trackIndex;
 	OBSBasic *main = reinterpret_cast<OBSBasic*>(App()->GetMainWindow());
@@ -309,8 +344,9 @@ VolControl::VolControl(OBSSource source_, bool *mutePtr, bool showConfig, bool v
 		rightLayout->setContentsMargins(0, 0, 0, 0);
 		rightLayout->setSpacing(5);
 #if defined(_WIN32) || defined(__APPLE__) || HAVE_PULSEAUDIO
+		rightLayout->addWidget(mon);
 		if (trackIndex < 0)
-			rightLayout->addWidget(mon);
+			rightLayout->addWidget(send);
 #endif
 		if (trackIndex >= 0) {
 			rightLayout->addWidget(stream);
@@ -343,8 +379,11 @@ VolControl::VolControl(OBSSource source_, bool *mutePtr, bool showConfig, bool v
 		textLayout->setContentsMargins(0, 0, 0, 0);
 		textLayout->setSpacing(0);
 #if defined(_WIN32) || defined(__APPLE__) || HAVE_PULSEAUDIO
-			textLayout->addWidget(mon);
+		textLayout->addWidget(mon);
+		if (trackIndex < 0)
+			textLayout->addWidget(send);
 #endif
+		if (trackIndex >= 0) {
 			textLayout->addWidget(stream);
 			textLayout->addWidget(rec);
 			textLayout->addItem(new QSpacerItem(5, 0));
@@ -398,23 +437,37 @@ VolControl::VolControl(OBSSource source_, bool *mutePtr, bool showConfig, bool v
 			SLOT(SetMuted(bool)));
 	/* monitoring button */
 #if defined(_WIN32) || defined(__APPLE__) || HAVE_PULSEAUDIO
-	if (trackIndex >= 0) {
-		bool monON = false;
-		enum obs_monitoring_type type =
-				(obs_monitoring_type)obs_source_get_monitoring_type(source);
-		if (type != OBS_MONITORING_TYPE_NONE)
-			monON = true;
-		mon->setChecked(monON);
-		SetMon(monON);
-		mon->setAccessibleName(QTStr("VolControl.Mon"));
-		mon->setToolTip(QTStr("VolControl.Mon.Tooltip"));
+	bool monON = false;
+	enum obs_monitoring_type type =
+		(obs_monitoring_type)obs_source_get_monitoring_type(source);
+	if (type != OBS_MONITORING_TYPE_NONE)
+		monON = true;
+	mon->setChecked(monON);
+	SetMon(monON);
+	mon->setAccessibleName(QTStr("VolControl.Mon"));
+	mon->setToolTip(QTStr("VolControl.Mon.Tooltip"));
 
-		signal_handler_connect(obs_source_get_signal_handler(source), "monitor",
-				OBSMonitoringEnabled, this);
+	signal_handler_connect(obs_source_get_signal_handler(source), "monitor",
+			OBSMonitoringEnabled, this);
 
-		QWidget::connect(mon, SIGNAL(clicked(bool)), this, SLOT(SetMon(bool)));
+	QWidget::connect(mon, SIGNAL(clicked(bool)), this, SLOT(SetMon(bool)));
+	/* The send button toggles the sends of the source to output tracks.
+	 * This toggles OBS_MONITORING_TYPE_MONITOR_ONLY and
+	 * OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT.
+	 */
+	if (trackIndex < 0) {
+		bool sends = obs_source_get_sends(source);
+		send->setChecked(sends);
+		SetSends(!sends); // for initialization purposes
+		SetSends(sends);
+		send->setAccessibleName(QTStr("VolControl.Sends"));
+		send->setToolTip(QTStr("VolControl.Sends.Tooltip"));
+		signal_handler_connect(obs_source_get_signal_handler(source), "send", OBSSend, this);
+		QWidget::connect(send, SIGNAL(clicked(bool)), this,
+				SLOT(SetSends(bool)));
+	}
 #endif
-
+	if (trackIndex >= 0) {
 		bool onAir = false;
 		int stream_index = config_get_int(main->Config(), "AdvOut",
 				"TrackIndex");
@@ -442,7 +495,7 @@ VolControl::VolControl(OBSSource source_, bool *mutePtr, bool showConfig, bool v
 				onRec = true;
 		}
 		rec->setChecked(onRec);
-		rec->setAccessibleName(QTStr("VolControl.Rec").arg(sourceName));
+		rec->setAccessibleName(QTStr("VolControl.Rec %1").arg(sourceName));
 		rec->setToolTip(QTStr("VolControl.Rec.Tooltip"));
 		QWidget::connect(rec, SIGNAL(clicked(bool)),
 				this, SLOT(SetRec(bool)));
@@ -483,6 +536,8 @@ VolControl::~VolControl()
 			"mute", OBSVolumeMuted, this);
 	signal_handler_disconnect(obs_source_get_signal_handler(source),
 			"monitor", OBSMonitoringEnabled, this);
+	signal_handler_disconnect(obs_source_get_signal_handler(source),
+			"sends", OBSSend, this);
 	obs_fader_destroy(obs_fader);
 	obs_volmeter_destroy(obs_volmeter);
 }
