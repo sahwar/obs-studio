@@ -626,6 +626,18 @@ RecCheckBox::indicator:unchecked {
     image: url(:/res/images/recOFF.png);
 }
 
+SendsCheckBox {
+    outline: none;
+}
+
+SendsCheckBox::indicator:checked {
+    image: url(:/res/images/worldON.png);
+}
+
+SendsCheckBox::indicator:unchecked {
+    image: url(:/res/images/worldOFF.png);
+}
+
 /* Group Collapse Checkbox */
 
 SourceTreeSubItemCheckBox {
