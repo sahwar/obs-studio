@@ -1165,6 +1165,20 @@ bool OBSBasic::InitBasicConfigDefaults()
 			false);
 	config_set_default_bool  (basicConfig, "SimpleOutput", "EnforceBitrate",
 			true);
+	config_set_default_bool  (basicConfig, "SimpleOutput", "DynamicBitrate",
+			false);
+	config_set_default_int   (basicConfig, "SimpleOutput", "DynamicBitrateDown",
+			15);
+	config_set_default_int   (basicConfig, "SimpleOutput", "DynamicBitrateUp",
+			35);
+	config_set_default_int   (basicConfig, "SimpleOutput",
+			"DynamicBitrateThreshold", 5);
+	config_set_default_int   (basicConfig, "SimpleOutput",
+			"DynamicBitrateRecoveryTime", 30);
+	config_set_default_int   (basicConfig, "SimpleOutput",
+			"DynamicBitrateDecreaseTime", 300);
+	config_set_default_int   (basicConfig, "SimpleOutput",
+			"DynamicBitrateFloor", 50);
 	config_set_default_string(basicConfig, "SimpleOutput", "Preset",
 			"veryfast");
 	config_set_default_string(basicConfig, "SimpleOutput", "RecQuality",
@@ -1179,6 +1193,19 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	config_set_default_bool  (basicConfig, "AdvOut", "ApplyServiceSettings",
 			true);
+	config_set_default_bool  (basicConfig, "AdvOut", "DynamicBitrate",
+			false);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateDown",
+			15);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateUp",
+			35);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateThreshold",
+			5);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateRecoveryTime",
+			30);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateDecreaseTime",
+			300);
+	config_set_default_int   (basicConfig, "AdvOut", "DynamicBitrateFloor", 50);
 	config_set_default_bool  (basicConfig, "AdvOut", "UseRescale", false);
 	config_set_default_uint  (basicConfig, "AdvOut", "TrackIndex", 1);
 	config_set_default_string(basicConfig, "AdvOut", "Encoder", "obs_x264");
