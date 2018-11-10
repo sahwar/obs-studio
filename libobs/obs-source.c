@@ -1252,8 +1252,7 @@ static inline bool source_muted(obs_source_t *source, uint64_t os_time)
 			(source->push_to_talk_enabled && !push_to_talk_active);
 }
 
-static void process_audio(obs_source_t *source,
-		const struct obs_source_audio *audio);
+static void process_audio(obs_source_t *source, uint64_t ts);
 
 static void source_output_audio_data(obs_source_t *source,
 		const struct audio_data *data, const struct obs_source_audio *audio)
@@ -1332,6 +1331,7 @@ static void source_output_audio_data(obs_source_t *source,
 	}
 	source_signal_audio_data(source, data, source_muted(source, os_time));
 	process_audio(source, in.timestamp);
+
 	if (push_back && source->audio_ts)
 		source_output_audio_push_back(source, &in);
 	else
