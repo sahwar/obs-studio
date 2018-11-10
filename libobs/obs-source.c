@@ -1331,7 +1331,8 @@ static void source_output_audio_data(obs_source_t *source,
 	}
 	source_signal_audio_data(source, data, source_muted(source, os_time));
 	process_audio(source, in.timestamp);
-
+	for (int i = 0; i < MAX_AV_PLANES; i++)
+		in.data[i] = source->audio_data.data[i];
 	if (push_back && source->audio_ts)
 		source_output_audio_push_back(source, &in);
 	else
