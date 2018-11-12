@@ -1330,11 +1330,11 @@ static void source_output_audio_data(obs_source_t *source,
 		source->last_sync_offset = sync_offset;
 	}
 	if (source->pre_rematrix_monitor) {
-	pthread_mutex_unlock(&source->audio_buf_mutex);
-	source_signal_audio_data(source, &in, source_muted(source, os_time));
-	pthread_mutex_lock(&source->audio_buf_mutex);
+		pthread_mutex_unlock(&source->audio_buf_mutex);
+		source_signal_audio_data(source, &in, source_muted(source, os_time));
+		pthread_mutex_lock(&source->audio_buf_mutex);
+		process_audio(source, in.timestamp);
 	}
-	process_audio(source, in.timestamp);
 	for (int i = 0; i < MAX_AV_PLANES; i++)
 		in.data[i] = source->audio_data.data[i];
 
@@ -2547,7 +2547,8 @@ static inline void reset_initial_resampler(obs_source_t *source,
 
 	output_info.format           = obs_info->format;
 	output_info.samples_per_sec  = obs_info->samples_per_sec;
-	output_info.speakers         = audio->speakers;
+	output_info.speakers         = source->pre_rematrix_monitor ?
+			audio->speakers:obs_info->speakers;
 
 	source->sample_info.format          = audio->format;
 	source->sample_info.samples_per_sec = audio->samples_per_sec;
@@ -2565,6 +2566,10 @@ static inline void reset_initial_resampler(obs_source_t *source,
 
 	source->resampler = audio_resampler_create(&output_info,
 			&source->sample_info);
+
+	source->sample_info.format          = output_info.format;
+	source->sample_info.samples_per_sec = output_info.samples_per_sec;
+	source->sample_info.speakers        = output_info.speakers;
 
 	source->audio_failed = source->resampler == NULL;
 	if (source->resampler == NULL)
@@ -2711,9 +2716,16 @@ static void preprocess_audio(obs_source_t *source,
 	uint32_t frames = audio->frames;
 	bool mono_output;
 
-	if (source->sample_info.samples_per_sec != audio->samples_per_sec ||
-	    source->sample_info.format          != audio->format)
-		reset_initial_resampler(source, audio);
+	if (source->pre_rematrix_monitor) {
+		if (source->sample_info.samples_per_sec != audio->samples_per_sec ||
+			source->sample_info.format != audio->format)
+			reset_initial_resampler(source, audio);
+	} else {
+		if (source->sample_info.samples_per_sec != audio->samples_per_sec ||
+			source->sample_info.format != audio->format ||
+			source->sample_info.speakers != audio->speakers)
+			reset_initial_resampler(source, audio);
+	}
 
 	if (source->audio_failed)
 		return;
@@ -2756,8 +2768,7 @@ static void process_audio(obs_source_t *source,
 	if (obs_get_audio_info(&audio_info)) {
 		if (source->sample_info.speakers != audio_info.speakers)
 			reset_resampler(source);
-	}
-
+		}
 
 	if (source->audio_failed)
 		return;
@@ -2765,11 +2776,10 @@ static void process_audio(obs_source_t *source,
 	if (source->resampler) {
 		uint8_t  *output[MAX_AV_PLANES];
 		memset(output, 0, sizeof(output));
-		audio_resampler_resample(source->resampler, output, &frames,
+		bool ret = audio_resampler_resample(source->resampler, output, &frames,
 				&source->resample_offset, source->audio_data.data, frames);
 		copy_audio_data(source, (const uint8_t *const *)output, frames, ts);
 	}
-
 }
 
 void obs_source_output_audio(obs_source_t *source,
@@ -2781,7 +2791,6 @@ void obs_source_output_audio(obs_source_t *source,
 		return;
 	if (!obs_ptr_valid(audio, "obs_source_output_audio"))
 		return;
-
 	preprocess_audio(source, audio);
 
 	pthread_mutex_lock(&source->filter_mutex);
