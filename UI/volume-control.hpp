@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QMutex>
 #include <QList>
+#include <QCheckBox>
 
 class QPushButton;
 class VolumeMeterTimer;
@@ -219,6 +220,9 @@ protected:
 class QLabel;
 class QSlider;
 class MuteCheckBox;
+class PreMatrixCheckBox : public QCheckBox {
+	Q_OBJECT
+};
 
 class VolControl : public QWidget {
 	Q_OBJECT
@@ -230,6 +234,7 @@ private:
 	VolumeMeter     *volMeter;
 	QSlider         *slider;
 	MuteCheckBox    *mute;
+	PreMatrixCheckBox *preMatrix;
 	QPushButton     *config = nullptr;
 	float           levelTotal;
 	float           levelCount;
@@ -251,6 +256,7 @@ private slots:
 	void VolumeMuted(bool muted);
 
 	void SetMuted(bool checked);
+	void SetPreMatrix(bool checked);
 	void SliderChanged(int vol);
 	void updateText();
 
