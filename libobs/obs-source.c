@@ -1329,10 +1329,13 @@ static void source_output_audio_data(obs_source_t *source,
 			push_back = false;
 		source->last_sync_offset = sync_offset;
 	}
-	source_signal_audio_data(source, data, source_muted(source, os_time));
+	pthread_mutex_unlock(&source->audio_buf_mutex);
+	source_signal_audio_data(source, &in, source_muted(source, os_time));
+	pthread_mutex_lock(&source->audio_buf_mutex);
 	process_audio(source, in.timestamp);
 	for (int i = 0; i < MAX_AV_PLANES; i++)
 		in.data[i] = source->audio_data.data[i];
+
 	if (push_back && source->audio_ts)
 		source_output_audio_push_back(source, &in);
 	else
@@ -2744,21 +2747,23 @@ static void process_audio(obs_source_t *source,
 		uint64_t ts)
 {
 	uint32_t frames = source->audio_data.frames;
+	struct obs_audio_info audio_info;
+	if (obs_get_audio_info(&audio_info)) {
+		if (source->sample_info.speakers != audio_info.speakers)
+			reset_resampler(source);
+	}
 
-	reset_resampler(source);
 
 	if (source->audio_failed)
 		return;
 
-
-	uint8_t  *output[MAX_AV_PLANES];
-
-	memset(output, 0, sizeof(output));
-
-	bool ret = audio_resampler_resample(source->resampler, output, &frames,
-			&source->resample_offset, source->audio_data.data, frames);
-
-	copy_audio_data(source, (const uint8_t *const *)output, frames, ts);
+	if (source->resampler) {
+		uint8_t  *output[MAX_AV_PLANES];
+		memset(output, 0, sizeof(output));
+		audio_resampler_resample(source->resampler, output, &frames,
+				&source->resample_offset, source->audio_data.data, frames);
+		copy_audio_data(source, (const uint8_t *const *)output, frames, ts);
+	}
 
 }
 
