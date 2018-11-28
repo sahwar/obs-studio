@@ -31,6 +31,7 @@
 #define S_RELEASE_TIME                  "release_time"
 #define S_OUTPUT_GAIN                   "output_gain"
 #define S_SIDECHAIN_SOURCE              "sidechain_source"
+#define S_LIMITER                       "limiter"
 
 #define MT_ obs_module_text
 #define TEXT_RATIO                      MT_("Compressor.Ratio")
@@ -39,6 +40,7 @@
 #define TEXT_RELEASE_TIME               MT_("Compressor.ReleaseTime")
 #define TEXT_OUTPUT_GAIN                MT_("Compressor.OutputGain")
 #define TEXT_SIDECHAIN_SOURCE           MT_("Compressor.SidechainSource")
+#define TEXT_LIMITER                    MT_("Compressor.Limiter")
 
 #define MIN_RATIO                       1.0
 #define MAX_RATIO                       32.0
@@ -81,6 +83,8 @@ struct compressor_data {
 	struct circlebuf sidechain_data[MAX_AUDIO_CHANNELS];
 	float *sidechain_buf[MAX_AUDIO_CHANNELS];
 	size_t max_sidechain_frames;
+
+	bool limiter;
 };
 
 /* -------------------------------------------------------- */
@@ -190,7 +194,7 @@ static void compressor_update(void *data, obs_data_t *s)
 		audio_output_get_sample_rate(obs_get_audio());
 	const size_t num_channels =
 		audio_output_get_channels(obs_get_audio());
-	const float attack_time_ms =
+	float attack_time_ms =
 		(float)obs_data_get_int(s, S_ATTACK_TIME);
 	const float release_time_ms =
 		(float)obs_data_get_int(s, S_RELEASE_TIME);
@@ -198,9 +202,12 @@ static void compressor_update(void *data, obs_data_t *s)
 		(float)obs_data_get_double(s, S_OUTPUT_GAIN);
 	const char *sidechain_name =
 		obs_data_get_string(s, S_SIDECHAIN_SOURCE);
-
+	const bool  limiter        =
+		obs_data_get_bool(s, S_LIMITER);
 	cd->ratio = (float)obs_data_get_double(s, S_RATIO);
 	cd->threshold = (float)obs_data_get_double(s, S_THRESHOLD);
+	if (limiter)
+		attack_time_ms = 0.001f;
 	cd->attack_gain = gain_coefficient(sample_rate,
 			attack_time_ms / MS_IN_S_F);
 	cd->release_gain = gain_coefficient(sample_rate,
@@ -208,7 +215,7 @@ static void compressor_update(void *data, obs_data_t *s)
 	cd->output_gain = db_to_mul(output_gain_db);
 	cd->num_channels = num_channels;
 	cd->sample_rate = sample_rate;
-	cd->slope = 1.0f - (1.0f / cd->ratio);
+	cd->slope = !limiter ? 1.0f - (1.0f / cd->ratio) : 1.0f;
 
 	bool valid_sidechain =
 		*sidechain_name && strcmp(sidechain_name, "none") != 0;
@@ -468,6 +475,7 @@ static void compressor_defaults(obs_data_t *s)
 	obs_data_set_default_int(s, S_RELEASE_TIME, 60);
 	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0f);
 	obs_data_set_default_string(s, S_SIDECHAIN_SOURCE, "none");
+	obs_data_set_default_bool(s, S_LIMITER, false);
 }
 
 struct sidechain_prop_info {
@@ -490,12 +498,34 @@ static bool add_sources(void *data, obs_source_t *source)
 	return true;
 }
 
+static bool limiter_changed(obs_properties_t *props, obs_property_t *p,
+	obs_data_t *settings)
+{
+	bool limiter = obs_data_get_bool(settings, S_LIMITER);
+	obs_property_t *ratio     = obs_properties_get(props, S_RATIO);
+	obs_property_t *attack    = obs_properties_get(props, S_ATTACK_TIME);
+	obs_property_t *gain      = obs_properties_get(props, S_OUTPUT_GAIN);
+	obs_property_t *sidechain = obs_properties_get(props, S_SIDECHAIN_SOURCE);
+
+	obs_property_set_enabled(ratio, !limiter);
+	obs_property_set_enabled(attack, !limiter);
+	obs_property_set_enabled(gain, !limiter);
+	obs_property_set_enabled(sidechain, !limiter);
+	obs_property_set_visible(ratio, !limiter);
+	obs_property_set_visible(attack, !limiter);
+	obs_property_set_visible(gain, !limiter);
+	obs_property_set_visible(sidechain, !limiter);
+
+	UNUSED_PARAMETER(p);
+	return true;
+}
+
 static obs_properties_t *compressor_properties(void *data)
 {
 	struct compressor_data *cd = data;
 	obs_properties_t *props = obs_properties_create();
 	obs_source_t *parent = NULL;
-
+	obs_property_t *limiter;
 	if (cd)
 		parent = obs_filter_get_parent(cd->context);
 
@@ -509,7 +539,9 @@ static obs_properties_t *compressor_properties(void *data)
 		TEXT_RELEASE_TIME, MIN_ATK_RLS_MS, MAX_RLS_MS, 1);
 	obs_properties_add_float_slider(props, S_OUTPUT_GAIN,
 		TEXT_OUTPUT_GAIN, MIN_OUTPUT_GAIN_DB, MAX_OUTPUT_GAIN_DB, 0.1);
-
+	limiter = obs_properties_add_bool(props, S_LIMITER, TEXT_LIMITER);
+	obs_property_set_long_description(limiter, obs_module_text("Compressor.Limiter.Tooltip"));
+	obs_property_set_modified_callback(limiter, limiter_changed);
 	obs_property_t *sources = obs_properties_add_list(props,
 			S_SIDECHAIN_SOURCE, TEXT_SIDECHAIN_SOURCE,
 			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
