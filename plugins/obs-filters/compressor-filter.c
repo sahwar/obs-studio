@@ -49,6 +49,7 @@
 #define MIN_ATK_RLS_MS                  1
 #define MAX_RLS_MS                      1000
 #define MAX_ATK_MS                      500
+#define LIMITER_ATK_TIME                0.001f
 #define DEFAULT_AUDIO_BUF_MS            10
 
 #define MS_IN_S                         1000
@@ -81,6 +82,8 @@ struct compressor_data {
 	struct circlebuf sidechain_data[MAX_AUDIO_CHANNELS];
 	float *sidechain_buf[MAX_AUDIO_CHANNELS];
 	size_t max_sidechain_frames;
+
+	bool isLimiter;
 };
 
 /* -------------------------------------------------------- */
@@ -141,6 +144,12 @@ static const char *compressor_name(void *unused)
 	return obs_module_text("Compressor");
 }
 
+static const char *limiter_name(void *unused)
+{
+	UNUSED_PARAMETER(unused);
+	return obs_module_text("Limiter");
+}
+
 static void sidechain_capture(void *param, obs_source_t *source,
 		const struct audio_data *audio_data, bool muted)
 {
@@ -190,68 +199,70 @@ static void compressor_update(void *data, obs_data_t *s)
 		audio_output_get_sample_rate(obs_get_audio());
 	const size_t num_channels =
 		audio_output_get_channels(obs_get_audio());
-	const float attack_time_ms =
-		(float)obs_data_get_int(s, S_ATTACK_TIME);
+	cd->threshold  = (float)obs_data_get_double(s, S_THRESHOLD);
 	const float release_time_ms =
 		(float)obs_data_get_int(s, S_RELEASE_TIME);
-	const float output_gain_db =
-		(float)obs_data_get_double(s, S_OUTPUT_GAIN);
-	const char *sidechain_name =
-		obs_data_get_string(s, S_SIDECHAIN_SOURCE);
+	const float attack_time_ms = !cd->isLimiter ?
+			(float)obs_data_get_int(s, S_ATTACK_TIME) : LIMITER_ATK_TIME;
+	const float output_gain_db = !cd->isLimiter ?
+			(float)obs_data_get_double(s, S_OUTPUT_GAIN) : 0;
+	const char *sidechain_name = !cd->isLimiter ?
+		obs_data_get_string(s, S_SIDECHAIN_SOURCE) : NULL;
 
-	cd->ratio = (float)obs_data_get_double(s, S_RATIO);
-	cd->threshold = (float)obs_data_get_double(s, S_THRESHOLD);
+	cd->ratio = !cd->isLimiter ? (float)obs_data_get_double(s, S_RATIO) : INFINITY;
 	cd->attack_gain = gain_coefficient(sample_rate,
 			attack_time_ms / MS_IN_S_F);
 	cd->release_gain = gain_coefficient(sample_rate,
 			release_time_ms / MS_IN_S_F);
-	cd->output_gain = db_to_mul(output_gain_db);
+	cd->output_gain  = db_to_mul(output_gain_db);
 	cd->num_channels = num_channels;
 	cd->sample_rate = sample_rate;
-	cd->slope = 1.0f - (1.0f / cd->ratio);
+	cd->slope = !cd->isLimiter ? 1.0f - (1.0f / cd->ratio) : 1;
 
-	bool valid_sidechain =
-		*sidechain_name && strcmp(sidechain_name, "none") != 0;
-	obs_weak_source_t *old_weak_sidechain = NULL;
+	if (!cd->isLimiter) {
+		bool valid_sidechain =
+				*sidechain_name && strcmp(sidechain_name, "none") != 0;
+		obs_weak_source_t *old_weak_sidechain = NULL;
 
-	pthread_mutex_lock(&cd->sidechain_update_mutex);
+		pthread_mutex_lock(&cd->sidechain_update_mutex);
 
-	if (!valid_sidechain) {
-		if (cd->weak_sidechain) {
-			old_weak_sidechain = cd->weak_sidechain;
-			cd->weak_sidechain = NULL;
-		}
-
-		bfree(cd->sidechain_name);
-		cd->sidechain_name = NULL;
-
-	} else {
-		if (!cd->sidechain_name ||
-		    strcmp(cd->sidechain_name, sidechain_name) != 0) {
+		if (!valid_sidechain) {
 			if (cd->weak_sidechain) {
 				old_weak_sidechain = cd->weak_sidechain;
 				cd->weak_sidechain = NULL;
 			}
 
 			bfree(cd->sidechain_name);
-			cd->sidechain_name = bstrdup(sidechain_name);
-			cd->sidechain_check_time = os_gettime_ns() - 3000000000;
+			cd->sidechain_name = NULL;
+
+		} else {
+			if (!cd->sidechain_name ||
+				strcmp(cd->sidechain_name, sidechain_name) != 0) {
+				if (cd->weak_sidechain) {
+					old_weak_sidechain = cd->weak_sidechain;
+					cd->weak_sidechain = NULL;
+				}
+
+				bfree(cd->sidechain_name);
+				cd->sidechain_name = bstrdup(sidechain_name);
+				cd->sidechain_check_time = os_gettime_ns() - 3000000000;
+			}
 		}
-	}
 
-	pthread_mutex_unlock(&cd->sidechain_update_mutex);
+		pthread_mutex_unlock(&cd->sidechain_update_mutex);
 
-	if (old_weak_sidechain) {
-		obs_source_t *old_sidechain =
-			obs_weak_source_get_source(old_weak_sidechain);
+		if (old_weak_sidechain) {
+			obs_source_t *old_sidechain =
+					obs_weak_source_get_source(old_weak_sidechain);
 
-		if (old_sidechain) {
-			obs_source_remove_audio_capture_callback(old_sidechain,
-					sidechain_capture, cd);
-			obs_source_release(old_sidechain);
+			if (old_sidechain) {
+				obs_source_remove_audio_capture_callback(old_sidechain,
+						sidechain_capture, cd);
+				obs_source_release(old_sidechain);
+			}
+
+			obs_weak_source_release(old_weak_sidechain);
 		}
-
-		obs_weak_source_release(old_weak_sidechain);
 	}
 
 	size_t sample_len = sample_rate * DEFAULT_AUDIO_BUF_MS / MS_IN_S;
@@ -277,6 +288,20 @@ static void *compressor_create(obs_data_t *settings, obs_source_t *filter)
 		return NULL;
 	}
 
+	cd->isLimiter = false;
+	compressor_update(cd, settings);
+	return cd;
+}
+
+static void *limiter_create(obs_data_t *settings, obs_source_t *filter)
+{
+	struct compressor_data *cd = bzalloc(sizeof(struct compressor_data));
+	cd->context                = filter;
+
+	cd->weak_sidechain = NULL;
+	cd->sidechain_name = NULL;
+
+	cd->isLimiter = true;
 	compressor_update(cd, settings);
 	return cd;
 }
@@ -285,25 +310,27 @@ static void compressor_destroy(void *data)
 {
 	struct compressor_data *cd = data;
 
-	if (cd->weak_sidechain) {
-		obs_source_t *sidechain = get_sidechain(cd);
-		if (sidechain) {
-			obs_source_remove_audio_capture_callback(sidechain,
-					sidechain_capture, cd);
-			obs_source_release(sidechain);
+	if (!cd->isLimiter) {
+		if (cd->weak_sidechain) {
+			obs_source_t *sidechain = get_sidechain(cd);
+			if (sidechain) {
+				obs_source_remove_audio_capture_callback(sidechain, sidechain_capture, cd);
+				obs_source_release(sidechain);
+			}
+
+			obs_weak_source_release(cd->weak_sidechain);
 		}
 
-		obs_weak_source_release(cd->weak_sidechain);
+		for (size_t i = 0; i < MAX_AUDIO_CHANNELS; i++) {
+			circlebuf_free(&cd->sidechain_data[i]);
+			bfree(cd->sidechain_buf[i]);
+		}
+		pthread_mutex_destroy(&cd->sidechain_mutex);
+		pthread_mutex_destroy(&cd->sidechain_update_mutex);
+
+		bfree(cd->sidechain_name);
 	}
 
-	for (size_t i = 0; i < MAX_AUDIO_CHANNELS; i++) {
-		circlebuf_free(&cd->sidechain_data[i]);
-		bfree(cd->sidechain_buf[i]);
-	}
-	pthread_mutex_destroy(&cd->sidechain_mutex);
-	pthread_mutex_destroy(&cd->sidechain_update_mutex);
-
-	bfree(cd->sidechain_name);
 	bfree(cd->envelope_buf);
 	bfree(cd);
 }
@@ -393,46 +420,45 @@ static void compressor_tick(void *data, float seconds)
 	struct compressor_data *cd = data;
 	char *new_name = NULL;
 
-	pthread_mutex_lock(&cd->sidechain_update_mutex);
-
-	if (cd->sidechain_name && !cd->weak_sidechain) {
-		uint64_t t = os_gettime_ns();
-
-		if (t - cd->sidechain_check_time > 3000000000) {
-			new_name = bstrdup(cd->sidechain_name);
-			cd->sidechain_check_time = t;
-		}
-	}
-
-	pthread_mutex_unlock(&cd->sidechain_update_mutex);
-
-	if (new_name) {
-		obs_source_t *sidechain = new_name && *new_name ?
-			obs_get_source_by_name(new_name) : NULL;
-		obs_weak_source_t *weak_sidechain = sidechain ?
-			obs_source_get_weak_source(sidechain) : NULL;
-
+	if (!cd->isLimiter) {
 		pthread_mutex_lock(&cd->sidechain_update_mutex);
 
-		if (cd->sidechain_name &&
-		    strcmp(cd->sidechain_name, new_name) == 0) {
-			cd->weak_sidechain = weak_sidechain;
-			weak_sidechain = NULL;
+		if (cd->sidechain_name && !cd->weak_sidechain) {
+			uint64_t t = os_gettime_ns();
+
+			if (t - cd->sidechain_check_time > 3000000000) {
+				new_name                 = bstrdup(cd->sidechain_name);
+				cd->sidechain_check_time = t;
+			}
 		}
 
 		pthread_mutex_unlock(&cd->sidechain_update_mutex);
 
-		if (sidechain) {
-			obs_source_add_audio_capture_callback(sidechain,
-					sidechain_capture, cd);
+		if (new_name) {
+			obs_source_t *sidechain = new_name && *new_name ?
+					obs_get_source_by_name(new_name) : NULL;
+			obs_weak_source_t *weak_sidechain = sidechain ?
+					obs_source_get_weak_source(sidechain) : NULL;
 
-			obs_weak_source_release(weak_sidechain);
-			obs_source_release(sidechain);
+			pthread_mutex_lock(&cd->sidechain_update_mutex);
+
+			if (cd->sidechain_name && strcmp(cd->sidechain_name, new_name) == 0) {
+				cd->weak_sidechain = weak_sidechain;
+				weak_sidechain     = NULL;
+			}
+
+			pthread_mutex_unlock(&cd->sidechain_update_mutex);
+
+			if (sidechain) {
+				obs_source_add_audio_capture_callback(sidechain, sidechain_capture, cd);
+
+				obs_weak_source_release(weak_sidechain);
+				obs_source_release(sidechain);
+			}
+
+			bfree(new_name);
 		}
-
-		bfree(new_name);
 	}
-
 	UNUSED_PARAMETER(seconds);
 }
 
@@ -440,16 +466,18 @@ static struct obs_audio_data *compressor_filter_audio(void *data,
 	struct obs_audio_data *audio)
 {
 	struct compressor_data *cd = data;
-
+	obs_weak_source_t *weak_sidechain = NULL;
 	const uint32_t num_samples = audio->frames;
 	if (num_samples == 0)
 		return audio;
 
 	float **samples = (float**)audio->data;
 
-	pthread_mutex_lock(&cd->sidechain_update_mutex);
-	obs_weak_source_t *weak_sidechain = cd->weak_sidechain;
-	pthread_mutex_unlock(&cd->sidechain_update_mutex);
+	if (!cd->isLimiter) {
+		pthread_mutex_lock(&cd->sidechain_update_mutex);
+		weak_sidechain = cd->weak_sidechain;
+		pthread_mutex_unlock(&cd->sidechain_update_mutex);
+	}
 
 	if (weak_sidechain)
 		analyze_sidechain(cd, num_samples);
@@ -468,6 +496,12 @@ static void compressor_defaults(obs_data_t *s)
 	obs_data_set_default_int(s, S_RELEASE_TIME, 60);
 	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0f);
 	obs_data_set_default_string(s, S_SIDECHAIN_SOURCE, "none");
+}
+
+static void limiter_defaults(obs_data_t *s)
+{
+	obs_data_set_default_double(s, S_THRESHOLD, -6.0f);
+	obs_data_set_default_int(s, S_RELEASE_TIME, 60);
 }
 
 struct sidechain_prop_info {
@@ -523,6 +557,18 @@ static obs_properties_t *compressor_properties(void *data)
 	return props;
 }
 
+static obs_properties_t *limiter_properties(void *data)
+{
+	struct limiter_data *cd    = data;
+	obs_properties_t *   props = obs_properties_create();
+
+	obs_properties_add_float_slider(props, S_THRESHOLD, TEXT_THRESHOLD, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB, 0.1);
+	obs_properties_add_int_slider(props, S_RELEASE_TIME, TEXT_RELEASE_TIME, MIN_ATK_RLS_MS, MAX_RLS_MS, 1);
+
+	UNUSED_PARAMETER(data);
+	return props;
+}
+
 struct obs_source_info compressor_filter = {
 	.id = "compressor_filter",
 	.type = OBS_SOURCE_TYPE_FILTER,
@@ -535,4 +581,17 @@ struct obs_source_info compressor_filter = {
 	.video_tick = compressor_tick,
 	.get_defaults = compressor_defaults,
 	.get_properties = compressor_properties,
+};
+
+struct obs_source_info limiter_filter = {
+        .id             = "limiter_filter",
+        .type           = OBS_SOURCE_TYPE_FILTER,
+        .output_flags   = OBS_SOURCE_AUDIO,
+        .get_name       = limiter_name,
+        .create         = limiter_create,
+        .destroy        = compressor_destroy,
+        .update         = compressor_update,
+        .filter_audio   = compressor_filter_audio,
+        .get_defaults   = limiter_defaults,
+        .get_properties = limiter_properties,
 };
