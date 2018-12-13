@@ -30,6 +30,7 @@ enum ff_codec_type {
 
 struct ff_format_desc;
 struct ff_codec_desc;
+struct ff_device_desc;
 
 void ff_init();
 
@@ -51,6 +52,7 @@ const struct ff_codec_desc *ff_codec_desc_next(
 
 // Format Description
 const struct ff_format_desc *ff_format_supported();
+const struct ff_format_desc *ff_device_supported();
 void ff_format_desc_free(const struct ff_format_desc *format_desc);
 const char *ff_format_desc_name(const struct ff_format_desc *format_desc);
 const char *ff_format_desc_long_name(const struct ff_format_desc *format_desc);
@@ -66,6 +68,13 @@ const char *ff_format_desc_get_default_name(
 const struct ff_format_desc *ff_format_desc_next(
 		const struct ff_format_desc *format_desc);
 
+// Device Description
+void ff_device_desc_free(const struct ff_device_desc *device_desc);
+const struct ff_device_desc *ff_get_device_list(const char *device_name);
+const char *ff_device_desc_name(const struct ff_device_desc *device_desc);
+const char *ff_device_desc_long_name(const struct ff_device_desc *device_desc);
+const struct ff_device_desc *ff_device_desc_next(
+		const struct ff_device_desc *devicet_desc);
 #ifdef __cplusplus
 }
 #endif
