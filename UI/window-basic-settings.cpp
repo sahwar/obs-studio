@@ -88,9 +88,27 @@ struct CodecDesc {
 		return StringEquals(name, codecDesc.name);
 	}
 };
+struct DeviceDesc {
+	const char *name = nullptr;
+	const char *long_name = nullptr;
+	const ff_device_desc *desc = nullptr;
+
+	inline DeviceDesc() = default;
+	inline DeviceDesc(const char *name, const char *long_name,
+			const ff_device_desc *desc = nullptr)
+			: name(name), long_name(long_name), desc(desc) {}
+
+	bool operator==(const DeviceDesc &f) const
+	{
+		if (!StringEquals(name, f.name))
+			return false;
+		return StringEquals(long_name, f.long_name);
+	}
+};
 }
 Q_DECLARE_METATYPE(FormatDesc)
 Q_DECLARE_METATYPE(CodecDesc)
+Q_DECLARE_METATYPE(DeviceDesc)
 
 /* parses "[width]x[height]", string, i.e. 1024x768 */
 static bool ConvertResText(const char *res, uint32_t &cx, uint32_t &cy)
@@ -369,7 +387,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->advOutFFNoSpace,      CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFURL,          EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFFormat,       COMBO_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceFormat, COMBO_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceList,   COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFMCfg,         EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceMCfg,   EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFVBitrate,     SCROLL_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFVGOPSize,     SCROLL_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFUseRescale,   CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -377,6 +398,8 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->advOutFFRescale,      CBEDIT_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFVEncoder,     COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFVCfg,         EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceVEncoder, COMBO_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceVCfg,   EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFABitrate,     SCROLL_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFTrack1,       CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFTrack2,       CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -386,6 +409,8 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->advOutFFTrack6,       CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFAEncoder,     COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutFFACfg,         EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceAEncoder, COMBO_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutFFDeviceACfg,   EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutTrack1Bitrate,  COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutTrack1Name,     EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutTrack2Bitrate,  COMBO_CHANGED,  OUTPUTS_CHANGED);
@@ -564,6 +589,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	LoadEncoderTypes();
 	LoadColorRanges();
 	LoadFormats();
+	LoadDeviceFormats();
 
 	auto ReloadAudioSources = [](void *data, calldata_t *param)
 	{
@@ -839,6 +865,8 @@ void OBSBasicSettings::LoadColorRanges()
 
 #define AV_FORMAT_DEFAULT_STR \
 	QTStr("Basic.Settings.Output.Adv.FFmpeg.FormatDefault")
+#define AV_NO_DEVICE_STR \
+	QTStr("Basic.Settings.Output.Adv.FFmpeg.NoDevice")
 #define AUDIO_STR \
 	QTStr("Basic.Settings.Output.Adv.FFmpeg.FormatAudio")
 #define VIDEO_STR \
@@ -877,6 +905,66 @@ void OBSBasicSettings::LoadFormats()
 	ui->advOutFFFormat->blockSignals(false);
 }
 
+void OBSBasicSettings::LoadDeviceFormats()
+{
+	ui->advOutFFDeviceFormat->blockSignals(true);
+	deviceFormats.reset(ff_device_supported());
+
+	const ff_format_desc *format = deviceFormats.get();
+
+	while (format != nullptr) {
+		bool audio = ff_format_desc_has_audio(format);
+		bool video = ff_format_desc_has_video(format);
+		FormatDesc formatDesc(ff_format_desc_name(format),
+			ff_format_desc_mime_type(format),
+			format);
+		if (audio || video) {
+			QString itemText(ff_format_desc_name(format));
+			if (audio ^ video)
+				itemText += QString(" (%1)").arg(
+					audio ? AUDIO_STR : VIDEO_STR);
+
+			ui->advOutFFDeviceFormat->addItem(itemText,
+				qVariantFromValue(formatDesc));
+		}
+
+		format = ff_format_desc_next(format);
+	}
+
+	ui->advOutFFDeviceFormat->model()->sort(0);
+
+	ui->advOutFFDeviceFormat->insertItem(0, AV_FORMAT_DEFAULT_STR);
+
+	ui->advOutFFDeviceFormat->blockSignals(false);
+}
+
+void OBSBasicSettings::LoadFFDevices(const ff_format_desc *formatDesc)
+{
+	const char *name = ff_format_desc_name(formatDesc);
+	LoadFFDevicesByFormatName(name);
+}
+
+void OBSBasicSettings::LoadFFDevicesByFormatName(const char *formatName)
+{
+	ui->advOutFFDeviceList->blockSignals(true);
+	ui->advOutFFDeviceList->clear();
+	OBSFFDeviceDesc deviceDescs(ff_get_device_list(formatName));
+
+	const ff_device_desc *device = deviceDescs.get();
+
+	ui->advOutFFDeviceList->insertItem(0, AV_NO_DEVICE_STR);
+	while (device != nullptr) {
+		DeviceDesc deviceDesc(ff_device_desc_name(device),
+			ff_device_desc_long_name(device), device);
+		QString itemText(ff_device_desc_long_name(device));
+		ui->advOutFFDeviceList->addItem(itemText,
+			qVariantFromValue(deviceDesc));
+
+		device = ff_device_desc_next(device);
+	}
+
+	ui->advOutFFDeviceList->blockSignals(false);
+}
 static void AddCodec(QComboBox *combo, const ff_codec_desc *codec_desc)
 {
 	QString itemText(ff_codec_desc_name(codec_desc));
@@ -957,6 +1045,56 @@ void OBSBasicSettings::ReloadCodecs(const ff_format_desc *formatDesc)
 
 	ui->advOutFFAEncoder->blockSignals(false);
 	ui->advOutFFVEncoder->blockSignals(false);
+}
+
+void OBSBasicSettings::ReloadDeviceCodecs(const ff_format_desc *formatDesc)
+{
+	ui->advOutFFDeviceAEncoder->blockSignals(true);
+	ui->advOutFFDeviceVEncoder->blockSignals(true);
+	ui->advOutFFDeviceAEncoder->clear();
+	ui->advOutFFDeviceVEncoder->clear();
+
+	if (formatDesc == nullptr)
+		return;
+
+	bool ignore_compatability = false;
+	OBSFFCodecDesc codecDescs(ff_codec_supported(formatDesc,
+		ignore_compatability));
+
+	const ff_codec_desc *codec = codecDescs.get();
+
+	while (codec != nullptr) {
+		switch (ff_codec_desc_type(codec)) {
+		case FF_CODEC_AUDIO:
+			AddCodec(ui->advOutFFDeviceAEncoder, codec);
+			break;
+		case FF_CODEC_VIDEO:
+			AddCodec(ui->advOutFFDeviceVEncoder, codec);
+			break;
+		default:
+			break;
+		}
+
+		codec = ff_codec_desc_next(codec);
+	}
+
+	if (ff_format_desc_has_audio(formatDesc))
+		AddDefaultCodec(ui->advOutFFDeviceAEncoder, formatDesc,
+			FF_CODEC_AUDIO);
+	if (ff_format_desc_has_video(formatDesc))
+		AddDefaultCodec(ui->advOutFFDeviceVEncoder, formatDesc,
+			FF_CODEC_VIDEO);
+
+	ui->advOutFFDeviceAEncoder->model()->sort(0);
+	ui->advOutFFDeviceVEncoder->model()->sort(0);
+
+	QVariant disable = qVariantFromValue(CodecDesc());
+
+	ui->advOutFFDeviceAEncoder->insertItem(0, AV_ENCODER_DISABLE_STR, disable);
+	ui->advOutFFDeviceVEncoder->insertItem(0, AV_ENCODER_DISABLE_STR, disable);
+
+	ui->advOutFFDeviceAEncoder->blockSignals(false);
+	ui->advOutFFDeviceVEncoder->blockSignals(false);
 }
 
 void OBSBasicSettings::LoadLanguageList()
@@ -1734,6 +1872,24 @@ static void SelectFormat(QComboBox *combo, const char *name,
 	combo->setCurrentIndex(0);
 }
 
+static void SelectDevice(QComboBox *combo, const char *name, const char *id)
+{
+	if (name) {
+		DeviceDesc deviceDesc(id, name, NULL);
+		for (int i = 0; i < combo->count(); i++) {
+			QVariant v = combo->itemData(i);
+			if (!v.isNull()) {
+				if (deviceDesc == v.value<DeviceDesc>()) {
+					combo->setCurrentIndex(i);
+					return;
+				}
+			}
+		}
+	}
+
+	combo->setCurrentIndex(0);
+}
+
 static void SelectEncoder(QComboBox *combo, const char *name, int id)
 {
 	int idx = FindEncoder(combo, name, id);
@@ -1743,7 +1899,7 @@ static void SelectEncoder(QComboBox *combo, const char *name, int id)
 
 void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 {
-	bool saveFile = config_get_bool(main->Config(), "AdvOut",
+	int saveFile = config_get_int(main->Config(), "AdvOut",
 			"FFOutputToFile");
 	const char *path = config_get_string(main->Config(), "AdvOut",
 			"FFFilePath");
@@ -1752,10 +1908,18 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 	const char *url = config_get_string(main->Config(), "AdvOut", "FFURL");
 	const char *format = config_get_string(main->Config(), "AdvOut",
 			"FFFormat");
+	const char *device_format = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceFormat");
+	const char *device = config_get_string(main->Config(), "AdvOut",
+			"FFDevice");
+	const char *deviceId = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceId");
 	const char *mimeType = config_get_string(main->Config(), "AdvOut",
 			"FFFormatMimeType");
 	const char *muxCustom = config_get_string(main->Config(), "AdvOut",
 			"FFMCustom");
+	const char *muxCustomDevice = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceMCustom");
 	int videoBitrate = config_get_int(main->Config(), "AdvOut",
 			"FFVBitrate");
 	int gopSize = config_get_int(main->Config(), "AdvOut",
@@ -1770,8 +1934,14 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 			"FFVEncoder");
 	int vEncoderId = config_get_int(main->Config(), "AdvOut",
 			"FFVEncoderId");
+	const char *vDeviceEncoder = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceVEncoder");
+	int vDeviceEncoderId = config_get_int(main->Config(), "AdvOut",
+			"FFDeviceVEncoderId");
 	const char *vEncCustom = config_get_string(main->Config(), "AdvOut",
 			"FFVCustom");
+	const char *vEncCustomDevice = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceVCustom");
 	int audioBitrate = config_get_int(main->Config(), "AdvOut",
 			"FFABitrate");
 	int audioMixes = config_get_int(main->Config(), "AdvOut",
@@ -1780,15 +1950,26 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 			"FFAEncoder");
 	int aEncoderId = config_get_int(main->Config(), "AdvOut",
 			"FFAEncoderId");
+	const char *aDeviceEncoder = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceAEncoder");
+	int aDeviceEncoderId = config_get_int(main->Config(), "AdvOut",
+			"FFDeviceAEncoderId");
 	const char *aEncCustom = config_get_string(main->Config(), "AdvOut",
 			"FFACustom");
+	const char *aEncCustomDevice = config_get_string(main->Config(), "AdvOut",
+			"FFDeviceACustom");
 
-	ui->advOutFFType->setCurrentIndex(saveFile ? 0 : 1);
+	ui->advOutFFType->setCurrentIndex(saveFile);
 	ui->advOutFFRecPath->setText(QT_UTF8(path));
 	ui->advOutFFNoSpace->setChecked(noSpace);
 	ui->advOutFFURL->setText(QT_UTF8(url));
 	SelectFormat(ui->advOutFFFormat, format, mimeType);
+	SelectFormat(ui->advOutFFDeviceFormat, device_format, nullptr);
+
+	LoadFFDevicesByFormatName(device_format);
+	SelectDevice(ui->advOutFFDeviceList, device, deviceId);
 	ui->advOutFFMCfg->setText(muxCustom);
+	ui->advOutFFDeviceMCfg->setText(muxCustomDevice);
 	ui->advOutFFVBitrate->setValue(videoBitrate);
 	ui->advOutFFVGOPSize->setValue(gopSize);
 	ui->advOutFFUseRescale->setChecked(rescale);
@@ -1796,10 +1977,16 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 	ui->advOutFFRescale->setEnabled(rescale);
 	ui->advOutFFRescale->setCurrentText(rescaleRes);
 	SelectEncoder(ui->advOutFFVEncoder, vEncoder, vEncoderId);
+
 	ui->advOutFFVCfg->setText(vEncCustom);
+	ui->advOutFFDeviceVCfg->setText(vEncCustomDevice);
 	ui->advOutFFABitrate->setValue(audioBitrate);
 	SelectEncoder(ui->advOutFFAEncoder, aEncoder, aEncoderId);
 	ui->advOutFFACfg->setText(aEncCustom);
+	ui->advOutFFDeviceACfg->setText(aEncCustomDevice);
+
+	SelectEncoder(ui->advOutFFDeviceVEncoder, vDeviceEncoder, vDeviceEncoderId);
+	SelectEncoder(ui->advOutFFDeviceAEncoder, aDeviceEncoder, aDeviceEncoderId);
 
 	ui->advOutFFTrack1->setChecked(audioMixes & (1 << 0));
 	ui->advOutFFTrack2->setChecked(audioMixes & (1 << 1));
@@ -1912,7 +2099,7 @@ void OBSBasicSettings::LoadOutputSettings()
 
 void OBSBasicSettings::SetAdvOutputFFmpegEnablement(
 		ff_codec_type encoderType, bool enabled,
-		bool enableEncoder)
+		bool enableEncoder, bool isDevice)
 {
 	bool rescale = config_get_bool(main->Config(), "AdvOut",
 			"FFRescale");
@@ -1923,13 +2110,24 @@ void OBSBasicSettings::SetAdvOutputFFmpegEnablement(
 		ui->advOutFFVGOPSize->setEnabled(enabled);
 		ui->advOutFFUseRescale->setEnabled(enabled);
 		ui->advOutFFRescale->setEnabled(enabled && rescale);
-		ui->advOutFFVEncoder->setEnabled(enabled || enableEncoder);
-		ui->advOutFFVCfg->setEnabled(enabled);
+		if (!isDevice) {
+			ui->advOutFFVEncoder->setEnabled(enabled || enableEncoder);
+			ui->advOutFFVCfg->setEnabled(enabled);
+		} else {
+			ui->advOutFFDeviceVEncoder->setEnabled(enabled || enableEncoder);
+			ui->advOutFFDeviceVCfg->setEnabled(enabled);
+		}
 		break;
 	case FF_CODEC_AUDIO:
 		ui->advOutFFABitrate->setEnabled(enabled);
-		ui->advOutFFAEncoder->setEnabled(enabled || enableEncoder);
-		ui->advOutFFACfg->setEnabled(enabled);
+		if (!isDevice) {
+			ui->advOutFFAEncoder->setEnabled(enabled || enableEncoder);
+			ui->advOutFFACfg->setEnabled(enabled);
+		}
+		else {
+			ui->advOutFFDeviceAEncoder->setEnabled(enabled || enableEncoder);
+			ui->advOutFFDeviceACfg->setEnabled(enabled);
+		}
 		ui->advOutFFTrack1->setEnabled(enabled);
 		ui->advOutFFTrack2->setEnabled(enabled);
 		ui->advOutFFTrack3->setEnabled(enabled);
@@ -3033,6 +3231,39 @@ void OBSBasicSettings::SaveFormat(QComboBox *combo)
 	}
 }
 
+void OBSBasicSettings::SaveDeviceFormat(QComboBox *combo)
+{
+	QVariant v = combo->currentData();
+	if (!v.isNull()) {
+		FormatDesc desc = v.value<FormatDesc>();
+		config_set_string(main->Config(), "AdvOut", "FFDeviceFormat",
+			desc.name);
+	}
+	else {
+		config_set_string(main->Config(), "AdvOut", "FFDeviceFormat",
+			nullptr);
+	}
+}
+
+
+void OBSBasicSettings::SaveDevice(QComboBox *combo)
+{
+	QVariant v = combo->currentData();
+	if (!v.isNull()) {
+		DeviceDesc desc = v.value<DeviceDesc>();
+		config_set_string(main->Config(), "AdvOut", "FFDeviceId",
+			desc.name);
+		config_set_string(main->Config(), "AdvOut", "FFDevice",
+			desc.long_name);
+	}
+	else {
+		config_set_string(main->Config(), "AdvOut", "FFDeviceId",
+			nullptr);
+		config_set_string(main->Config(), "AdvOut", "FFDevice",
+			nullptr);
+	}
+}
+
 void OBSBasicSettings::SaveEncoder(QComboBox *combo, const char *section,
 		const char *value)
 {
@@ -3114,23 +3345,30 @@ void OBSBasicSettings::SaveOutputSettings()
 			(ui->advOutRecTrack5->isChecked() ? (1<<4) : 0) |
 			(ui->advOutRecTrack6->isChecked() ? (1<<5) : 0));
 
-	config_set_bool(main->Config(), "AdvOut", "FFOutputToFile",
-			ui->advOutFFType->currentIndex() == 0 ? true : false);
+	config_set_int(main->Config(), "AdvOut", "FFOutputToFile",
+			ui->advOutFFType->currentIndex());
 	SaveEdit(ui->advOutFFRecPath, "AdvOut", "FFFilePath");
 	SaveCheckBox(ui->advOutFFNoSpace, "AdvOut", "FFFileNameWithoutSpace");
 	SaveEdit(ui->advOutFFURL, "AdvOut", "FFURL");
+	SaveDevice(ui->advOutFFDeviceList);
 	SaveFormat(ui->advOutFFFormat);
+	SaveDeviceFormat(ui->advOutFFDeviceFormat);
 	SaveEdit(ui->advOutFFMCfg, "AdvOut", "FFMCustom");
+	SaveEdit(ui->advOutFFDeviceMCfg, "AdvOut", "FFDeviceMCustom");
+	SaveEncoder(ui->advOutFFVEncoder, "AdvOut", "FFVEncoder");
+	SaveEncoder(ui->advOutFFAEncoder, "AdvOut", "FFAEncoder");
+	SaveEncoder(ui->advOutFFDeviceVEncoder, "AdvOut", "FFDeviceVEncoder");
+	SaveEncoder(ui->advOutFFDeviceAEncoder, "AdvOut", "FFDeviceAEncoder");
 	SaveSpinBox(ui->advOutFFVBitrate, "AdvOut", "FFVBitrate");
 	SaveSpinBox(ui->advOutFFVGOPSize, "AdvOut", "FFVGOPSize");
 	SaveCheckBox(ui->advOutFFUseRescale, "AdvOut", "FFRescale");
 	SaveCheckBox(ui->advOutFFIgnoreCompat, "AdvOut", "FFIgnoreCompat");
 	SaveCombo(ui->advOutFFRescale, "AdvOut", "FFRescaleRes");
-	SaveEncoder(ui->advOutFFVEncoder, "AdvOut", "FFVEncoder");
 	SaveEdit(ui->advOutFFVCfg, "AdvOut", "FFVCustom");
+	SaveEdit(ui->advOutFFDeviceVCfg, "AdvOut", "FFDeviceVCustom");
 	SaveSpinBox(ui->advOutFFABitrate, "AdvOut", "FFABitrate");
-	SaveEncoder(ui->advOutFFAEncoder, "AdvOut", "FFAEncoder");
 	SaveEdit(ui->advOutFFACfg, "AdvOut", "FFACustom");
+	SaveEdit(ui->advOutFFDeviceACfg, "AdvOut", "FFDeviceACustom");
 	config_set_int(main->Config(), "AdvOut", "FFAudioMixes",
 			(ui->advOutFFTrack1->isChecked() ? (1 << 0) : 0) |
 			(ui->advOutFFTrack2->isChecked() ? (1 << 1) : 0) |
@@ -3554,11 +3792,14 @@ void OBSBasicSettings::on_advOutFFIgnoreCompat_stateChanged(int)
 	/* Little hack to reload codecs when checked */
 	on_advOutFFFormat_currentIndexChanged(
 			ui->advOutFFFormat->currentIndex());
+	on_advOutFFDeviceFormat_currentIndexChanged(ui->advOutFFDeviceFormat->currentIndex());
+//	RefreshDeviceCodecs();
 }
 
 #define DEFAULT_CONTAINER_STR \
 	QTStr("Basic.Settings.Output.Adv.FFmpeg.FormatDescDef")
-
+#define DEFAULT_DEVICE_CONTAINER_STR \
+	QTStr("Basic.Settings.Output.Adv.FFmpeg.DeviceFormatDescDef")
 void OBSBasicSettings::on_advOutFFFormat_currentIndexChanged(int idx)
 {
 	const QVariant itemDataVariant = ui->advOutFFFormat->itemData(idx);
@@ -3567,25 +3808,126 @@ void OBSBasicSettings::on_advOutFFFormat_currentIndexChanged(int idx)
 		FormatDesc desc = itemDataVariant.value<FormatDesc>();
 		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
 				ff_format_desc_has_audio(desc.desc),
-				false);
+				false, false);
 		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
 				ff_format_desc_has_video(desc.desc),
-				false);
+				false, false);
 		ReloadCodecs(desc.desc);
 		ui->advOutFFFormatDesc->setText(ff_format_desc_long_name(
+				desc.desc));
+		CodecDesc defaultAudioCodecDesc =
+			GetDefaultCodecDesc(desc.desc, FF_CODEC_AUDIO);
+		CodecDesc defaultVideoCodecDesc =
+			GetDefaultCodecDesc(desc.desc, FF_CODEC_VIDEO);
+
+		SelectEncoder(ui->advOutFFAEncoder, defaultAudioCodecDesc.name,
+				defaultAudioCodecDesc.id);
+		SelectEncoder(ui->advOutFFVEncoder, defaultVideoCodecDesc.name,
+				defaultVideoCodecDesc.id);
+
+	} else {
+		ReloadCodecs(nullptr);
+		ui->advOutFFFormatDesc->setText(DEFAULT_CONTAINER_STR);
+	}
+}
+
+//void OBSBasicSettings::RefreshCodecs()
+//{
+//	int idx = ui->advOutFFDeviceFormat->currentIndex();
+//	const QVariant itemDataVariant = ui->advOutFFFormat->itemData(idx);
+//
+//	if (!itemDataVariant.isNull()) {
+//		FormatDesc desc = itemDataVariant.value<FormatDesc>();
+//		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
+//			ff_format_desc_has_audio(desc.desc),
+//			false);
+//		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
+//			ff_format_desc_has_video(desc.desc),
+//			false);
+//		ReloadCodecs(desc.desc);
+//		ui->advOutFFFormatDesc->setText(ff_format_desc_long_name(
+//			desc.desc));
+//		CodecDesc defaultAudioCodecDesc =
+//			GetDefaultCodecDesc(desc.desc, FF_CODEC_AUDIO);
+//		CodecDesc defaultVideoCodecDesc =
+//			GetDefaultCodecDesc(desc.desc, FF_CODEC_VIDEO);
+//
+//		SelectEncoder(ui->advOutFFAEncoder, defaultAudioCodecDesc.name,
+//			defaultAudioCodecDesc.id);
+//		SelectEncoder(ui->advOutFFVEncoder, defaultVideoCodecDesc.name,
+//			defaultVideoCodecDesc.id);
+//
+//	}
+//	else {
+//		ReloadCodecs(nullptr);
+//		ui->advOutFFFormatDesc->setText(DEFAULT_CONTAINER_STR);
+//	}
+//}
+
+//void OBSBasicSettings::RefreshDeviceCodecs()
+//{
+//	int idx = ui->advOutFFDeviceFormat->currentIndex();
+//	const QVariant itemDataVariant = ui->advOutFFDeviceFormat->itemData(idx);
+//
+//	if (!itemDataVariant.isNull()) {
+//		FormatDesc desc = itemDataVariant.value<FormatDesc>();
+//		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
+//			ff_format_desc_has_audio(desc.desc),
+//			false);
+//		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
+//			ff_format_desc_has_video(desc.desc),
+//			false);
+//		ReloadDeviceCodecs(desc.desc);
+//		ui->advOutFFDeviceFormatDesc->setText(ff_format_desc_long_name(
+//			desc.desc));
+//
+//		CodecDesc defaultAudioCodecDesc =
+//			GetDefaultCodecDesc(desc.desc, FF_CODEC_AUDIO);
+//		CodecDesc defaultVideoCodecDesc =
+//			GetDefaultCodecDesc(desc.desc, FF_CODEC_VIDEO);
+//		SelectEncoder(ui->advOutFFDeviceAEncoder, defaultAudioCodecDesc.name,
+//			defaultAudioCodecDesc.id);
+//		SelectEncoder(ui->advOutFFDeviceVEncoder, defaultVideoCodecDesc.name,
+//			defaultVideoCodecDesc.id);
+//	}
+//	else {
+//		ReloadDeviceCodecs(nullptr);
+//		ui->advOutFFDeviceFormatDesc->setText(DEFAULT_DEVICE_CONTAINER_STR);
+//	}
+//}
+
+void OBSBasicSettings::on_advOutFFDeviceFormat_currentIndexChanged(int idx)
+{
+	const QVariant itemDataVariant = ui->advOutFFDeviceFormat->itemData(idx);
+
+	if (!itemDataVariant.isNull()) {
+		FormatDesc desc = itemDataVariant.value<FormatDesc>();
+		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
+			ff_format_desc_has_audio(desc.desc),
+			false, true);
+		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
+			ff_format_desc_has_video(desc.desc),
+			false, true);
+		ReloadDeviceCodecs(desc.desc);
+		const char *device_format = config_get_string(main->Config(), "AdvOut",
+				"FFDeviceFormat");
+		if (strcmp(device_format, ff_format_desc_name(desc.desc)) != 0)
+			LoadFFDevices(desc.desc);
+		ui->advOutFFDeviceFormatDesc->setText(ff_format_desc_long_name(
 				desc.desc));
 
 		CodecDesc defaultAudioCodecDesc =
 			GetDefaultCodecDesc(desc.desc, FF_CODEC_AUDIO);
 		CodecDesc defaultVideoCodecDesc =
 			GetDefaultCodecDesc(desc.desc, FF_CODEC_VIDEO);
-		SelectEncoder(ui->advOutFFAEncoder, defaultAudioCodecDesc.name,
+		SelectEncoder(ui->advOutFFDeviceAEncoder, defaultAudioCodecDesc.name,
 				defaultAudioCodecDesc.id);
-		SelectEncoder(ui->advOutFFVEncoder, defaultVideoCodecDesc.name,
+		SelectEncoder(ui->advOutFFDeviceVEncoder, defaultVideoCodecDesc.name,
 				defaultVideoCodecDesc.id);
 	} else {
-		ReloadCodecs(nullptr);
-		ui->advOutFFFormatDesc->setText(DEFAULT_CONTAINER_STR);
+		ReloadDeviceCodecs(nullptr);
+		LoadFFDevices(nullptr);
+		ui->advOutFFDeviceFormatDesc->setText(DEFAULT_DEVICE_CONTAINER_STR);
 	}
 }
 
@@ -3595,7 +3937,17 @@ void OBSBasicSettings::on_advOutFFAEncoder_currentIndexChanged(int idx)
 	if (!itemDataVariant.isNull()) {
 		CodecDesc desc = itemDataVariant.value<CodecDesc>();
 		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
-				desc.id != 0 || desc.name != nullptr, true);
+				desc.id != 0 || desc.name != nullptr, true, false);
+	}
+}
+
+void OBSBasicSettings::on_advOutFFDeviceAEncoder_currentIndexChanged(int idx)
+{
+	const QVariant itemDataVariant = ui->advOutFFDeviceAEncoder->itemData(idx);
+	if (!itemDataVariant.isNull()) {
+		CodecDesc desc = itemDataVariant.value<CodecDesc>();
+		SetAdvOutputFFmpegEnablement(FF_CODEC_AUDIO,
+			desc.id != 0 || desc.name != nullptr, true, true);
 	}
 }
 
@@ -3605,13 +3957,47 @@ void OBSBasicSettings::on_advOutFFVEncoder_currentIndexChanged(int idx)
 	if (!itemDataVariant.isNull()) {
 		CodecDesc desc = itemDataVariant.value<CodecDesc>();
 		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
-				desc.id != 0 || desc.name != nullptr, true);
+				desc.id != 0 || desc.name != nullptr, true, false);
+	}
+}
+
+
+void OBSBasicSettings::on_advOutFFDeviceVEncoder_currentIndexChanged(int idx)
+{
+	const QVariant itemDataVariant = ui->advOutFFDeviceVEncoder->itemData(idx);
+	if (!itemDataVariant.isNull()) {
+		CodecDesc desc = itemDataVariant.value<CodecDesc>();
+		SetAdvOutputFFmpegEnablement(FF_CODEC_VIDEO,
+			desc.id != 0 || desc.name != nullptr, true, true);
 	}
 }
 
 void OBSBasicSettings::on_advOutFFType_currentIndexChanged(int idx)
 {
+	bool isDevice = idx == 2;
+	ui->stackedWidget_4->setCurrentIndex(isDevice);
+	ui->stackedWidget_5->setCurrentIndex(isDevice);
+	ui->stackedWidget_6->setCurrentIndex(isDevice);
+	ui->stackedWidget_7->setCurrentIndex(isDevice);
+	ui->stackedWidget_8->setCurrentIndex(isDevice);
+	ui->stackedWidget_9->setCurrentIndex(isDevice);
+	ui->stackedWidget_10->setCurrentIndex(isDevice);
+	ui->stackedWidget_11->setCurrentIndex(isDevice);
+	ui->stackedWidget_12->setCurrentIndex(isDevice);
+	ui->stackedWidget_13->setCurrentIndex(isDevice);
+	ui->stackedWidget_14->setCurrentIndex(isDevice);
+	ui->stackedWidget_15->setCurrentIndex(isDevice);
+	ui->stackedWidget_16->setCurrentIndex(isDevice);
+	ui->stackedWidget_17->setCurrentIndex(isDevice);
+
 	ui->advOutFFNoSpace->setHidden(idx != 0);
+
+	ui->advOutFFABitrate->setHidden(isDevice);
+	ui->advOutFFVBitrate->setHidden(isDevice);
+	ui->advOutFFVGOPSize->setHidden(isDevice);
+	ui->label_40->setHidden(isDevice);
+	ui->label_41->setHidden(isDevice);
+	ui->label_63->setHidden(isDevice);
 }
 
 void OBSBasicSettings::on_colorFormat_currentIndexChanged(const QString &text)

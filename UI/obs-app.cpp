@@ -2014,7 +2014,7 @@ static bool update_ffmpeg_output(ConfigFile &config)
 	config_remove_value(config, "AdvOut", "FFURL");
 	config_set_string(config, "AdvOut", "FFFilePath", urlStr.c_str());
 	config_set_string(config, "AdvOut", "FFExtension", extension.c_str());
-	config_set_bool(config, "AdvOut", "FFOutputToFile", true);
+	config_set_int(config, "AdvOut", "FFOutputToFile", 0);
 	return true;
 }
 

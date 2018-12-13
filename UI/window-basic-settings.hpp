@@ -76,10 +76,16 @@ public:
 	{
 		ff_codec_desc_free(codec);
 	}
+	void operator()(const ff_device_desc *device)
+	{
+		ff_device_desc_free(device);
+	}
 };
 using OBSFFCodecDesc = std::unique_ptr<const ff_codec_desc,
 		OBSFFDeleter>;
 using OBSFFFormatDesc = std::unique_ptr<const ff_format_desc,
+		OBSFFDeleter>;
+using OBSFFDeviceDesc = std::unique_ptr<const ff_device_desc,
 		OBSFFDeleter>;
 
 class OBSBasicSettings : public QDialog {
@@ -105,6 +111,7 @@ private:
 	int lastChannelSetupIdx = 0;
 
 	OBSFFFormatDesc formats;
+	OBSFFFormatDesc deviceFormats;
 
 	OBSPropertiesView *streamProperties = nullptr;
 	OBSPropertiesView *streamEncoderProps = nullptr;
@@ -148,6 +155,8 @@ private:
 	void SaveSpinBox(QSpinBox *widget, const char *section,
 			const char *value);
 	void SaveFormat(QComboBox *combo);
+	void SaveDeviceFormat(QComboBox *combo);
+	void SaveDevice(QComboBox *combo);
 	void SaveEncoder(QComboBox *combo, const char *section,
 			const char *value);
 
@@ -189,7 +198,13 @@ private:
 	void LoadEncoderTypes();
 	void LoadColorRanges();
 	void LoadFormats();
+	void LoadDeviceFormats();
+	void LoadFFDevices(const ff_format_desc *formatDesc);
+	void LoadFFDevicesByFormatName(const char *formatName);
 	void ReloadCodecs(const ff_format_desc *formatDesc);
+	void ReloadDeviceCodecs(const ff_format_desc *formatDesc);
+	//void RefreshCodecs();
+//	void RefreshDeviceCodecs();//used when compat flag for codecs is checked
 
 	void LoadGeneralSettings();
 	void LoadStream1Settings();
@@ -217,7 +232,7 @@ private:
 	void LoadAdvOutputAudioSettings();
 	void SetAdvOutputFFmpegEnablement(
 		ff_codec_type encoderType, bool enabled,
-		bool enableEncode = false);
+		bool enableEncode = false, bool isDevice = false);
 
 	/* audio */
 	void LoadListValues(QComboBox *widget, obs_property_t *prop, int index);
@@ -263,8 +278,11 @@ private slots:
 	void on_advOutRecEncoder_currentIndexChanged(int idx);
 	void on_advOutFFIgnoreCompat_stateChanged(int state);
 	void on_advOutFFFormat_currentIndexChanged(int idx);
+	void on_advOutFFDeviceFormat_currentIndexChanged(int idx);
 	void on_advOutFFAEncoder_currentIndexChanged(int idx);
 	void on_advOutFFVEncoder_currentIndexChanged(int idx);
+	void on_advOutFFDeviceAEncoder_currentIndexChanged(int idx);
+	void on_advOutFFDeviceVEncoder_currentIndexChanged(int idx);
 	void on_advOutFFType_currentIndexChanged(int idx);
 
 	void on_colorFormat_currentIndexChanged(const QString &text);

@@ -1279,7 +1279,12 @@ inline void AdvancedOutput::SetupRecording()
 
 inline void AdvancedOutput::SetupFFmpeg()
 {
-	const char *url = config_get_string(main->Config(), "AdvOut", "FFURL");
+	int outputType = config_get_int(main->Config(), "AdvOut", "FFOutputToFile");
+	bool isDevice = outputType == 2;
+	const char *url = config_get_string(main->Config(), "AdvOut",
+			"FFURL");
+	const char *device = config_get_string(main->Config(), "AdvOut",
+			"FFDevice");
 	int vBitrate = config_get_int(main->Config(), "AdvOut",
 			"FFVBitrate");
 	int gopSize = config_get_int(main->Config(), "AdvOut",
@@ -1288,31 +1293,41 @@ inline void AdvancedOutput::SetupFFmpeg()
 			"FFRescale");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut",
 			"FFRescaleRes");
-	const char *formatName = config_get_string(main->Config(), "AdvOut",
-			"FFFormat");
+	const char *formatName = !isDevice ? config_get_string(main->Config(), "AdvOut",
+			"FFFormat"): config_get_string(main->Config(), "AdvOut",
+			"FFDeviceFormat");
 	const char *mimeType = config_get_string(main->Config(), "AdvOut",
 			"FFFormatMimeType");
-	const char *muxCustom = config_get_string(main->Config(), "AdvOut",
-			"FFMCustom");
-	const char *vEncoder = config_get_string(main->Config(), "AdvOut",
-			"FFVEncoder");
-	int vEncoderId = config_get_int(main->Config(), "AdvOut",
-			"FFVEncoderId");
-	const char *vEncCustom = config_get_string(main->Config(), "AdvOut",
-			"FFVCustom");
+	const char *muxCustom = !isDevice ? config_get_string(main->Config(), "AdvOut",
+			"FFMCustom"):config_get_string(main->Config(), "AdvOut",
+			"FFDeviceMCustom");
+	const char *vEncoder = !isDevice? config_get_string(main->Config(), "AdvOut",
+			"FFVEncoder") : config_get_string(main->Config(), "AdvOut",
+			"FFDeviceVEncoder");
+	int vEncoderId = !isDevice? config_get_int(main->Config(), "AdvOut",
+			"FFVEncoderId"): config_get_int(main->Config(), "AdvOut",
+			"FFDeviceVEncoderId");
+	const char *vEncCustom = !isDevice ? config_get_string(main->Config(), "AdvOut",
+			"FFVCustom"): config_get_string(main->Config(), "AdvOut",
+			"FFDeviceVCustom");
 	int aBitrate = config_get_int(main->Config(), "AdvOut",
 			"FFABitrate");
 	int aMixes = config_get_int(main->Config(), "AdvOut",
 			"FFAudioMixes");
-	const char *aEncoder = config_get_string(main->Config(), "AdvOut",
-			"FFAEncoder");
-	int aEncoderId = config_get_int(main->Config(), "AdvOut",
-			"FFAEncoderId");
-	const char *aEncCustom = config_get_string(main->Config(), "AdvOut",
-			"FFACustom");
+	const char *aEncoder = !isDevice? config_get_string(main->Config(), "AdvOut",
+			"FFAEncoder"):config_get_string(main->Config(), "AdvOut",
+			"FFDeviceAEncoder");
+	int aEncoderId = !isDevice ? config_get_int(main->Config(), "AdvOut",
+			"FFAEncoderId"): config_get_int(main->Config(), "AdvOut",
+			"FFDeviceAEncoderId");
+	const char *aEncCustom = !isDevice ? config_get_string(main->Config(), "AdvOut",
+			"FFACustom"): config_get_string(main->Config(), "AdvOut",
+			"FFDeviceACustom");
 	obs_data_t *settings = obs_data_create();
 
+	obs_data_set_int(settings, "output_type", outputType);
 	obs_data_set_string(settings, "url", url);
+	obs_data_set_string(settings, "device", device);
 	obs_data_set_string(settings, "format_name", formatName);
 	obs_data_set_string(settings, "format_mime_type", mimeType);
 	obs_data_set_string(settings, "muxer_settings", muxCustom);

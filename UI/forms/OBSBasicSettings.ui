@@ -1975,8 +1975,8 @@
                          <property name="topMargin">
                           <number>0</number>
                          </property>
-                         <item row="1" column="0">
-                          <widget class="QLabel" name="label_36">
+                         <item row="0" column="0">
+                          <widget class="QLabel" name="label_48">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                              <horstretch>0</horstretch>
@@ -1990,20 +1990,175 @@
                             </size>
                            </property>
                            <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.SavePathURL</string>
+                            <string>Basic.Settings.Output.Adv.FFmpeg.Type</string>
                            </property>
                            <property name="alignment">
                             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                            </property>
+                           <property name="buddy">
+                            <cstring>advOutFFType</cstring>
+                           </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
+                         <item row="0" column="1">
+                          <widget class="QComboBox" name="advOutFFType">
+                           <item>
+                            <property name="text">
+                             <string>Basic.Settings.Output.Adv.FFmpeg.Type.RecordToFile</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Basic.Settings.Output.Adv.FFmpeg.Type.URL</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Basic.Settings.Output.Adv.FFmpeg.Type.Device</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
                           <widget class="QStackedWidget" name="stackedWidget_2">
                            <property name="currentIndex">
                             <number>0</number>
                            </property>
+                           <widget class="QWidget" name="page_4">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F4">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_36">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>170</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.SavePath</string>
+                               </property>
+                               <property name="alignment">
+                                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               </property>
+                              </widget>
+			     </item> 
+                            </layout>
+                           </widget>
                            <widget class="QWidget" name="page_5">
-                            <layout class="QHBoxLayout" name="horizontalLayout_12">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F5">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_93">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>170</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.SaveURL</string>
+                               </property>
+                               <property name="alignment">
+                                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               </property>
+                              </widget>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_6">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F6">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_90">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>170</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.Device</string>
+                               </property>
+                               <property name="alignment">
+                                <set>Qt::AlignLeft|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceList</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QStackedWidget" name="stackedWidget_3">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_7">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F7">
                              <property name="spacing">
                               <number>3</number>
                              </property>
@@ -2035,8 +2190,8 @@
                              </item>
                             </layout>
                            </widget>
-                           <widget class="QWidget" name="page_4">
-                            <layout class="QHBoxLayout" name="horizontalLayout_8">
+                           <widget class="QWidget" name="page_8">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F8">
                              <property name="spacing">
                               <number>0</number>
                              </property>
@@ -2061,36 +2216,397 @@
                              </item>
                             </layout>
                            </widget>
+                           <widget class="QWidget" name="page_9">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F9">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFDeviceList"/>
+                             </item>
+                            </layout>
+                           </widget>
+                          </widget>				 
+			 </item>
+                         <item row="2" column="1">
+                          <widget class="QCheckBox" name="advOutFFNoSpace">
+                           <property name="text">
+                            <string>Basic.Settings.Output.NoSpaceFileName</string>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
+                           </property>
                           </widget>
                          </item>
                          <item row="3" column="0">
-                          <widget class="QLabel" name="label_16">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.Format</string>
+                          <widget class="QStackedWidget" name="stackedWidget_4">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFFormat</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_10">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F10">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_16">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.Format</string>
+                               </property>
+                               <property name="alignment">
+                                <set>Qt::AlignLeft|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFFormat</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+			   </widget>
+                           <widget class="QWidget" name="page_11">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F11">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_95">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.Device.Format</string>
+                               </property>
+                               <property name="alignment">
+                                <set>Qt::AlignLeft|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceFormat</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+			   </widget>
                           </widget>
-                         </item>
+			 </item>
                          <item row="3" column="1">
-                          <widget class="QComboBox" name="advOutFFFormat"/>
-                         </item>
-                         <item row="4" column="0">
-                          <widget class="QLabel" name="label_44">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.FormatDesc</string>
+                          <widget class="QStackedWidget" name="stackedWidget_5">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
+                           <widget class="QWidget" name="page_12">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F12">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFFormat"/>
+                             </item>
+                            </layout>
+			   </widget>
+                           <widget class="QWidget" name="page_13">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F13">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFDeviceFormat"/>
+                             </item>
+                            </layout>
+			   </widget>
+                          </widget>
+			 </item> 
+                         <item row="4" column="0">
+                          <widget class="QStackedWidget" name="stackedWidget_6">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_14">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F14">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_44">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.FormatDesc</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_15">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F15">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_97">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.FormatDesc</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
                          <item row="4" column="1">
-                          <widget class="QLabel" name="advOutFFFormatDesc">
-                           <property name="text">
-                            <string/>
+                          <widget class="QStackedWidget" name="stackedWidget_7">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
+                           <widget class="QWidget" name="page_16">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F16">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="advOutFFFormatDesc">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_17">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F17">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="advOutFFDeviceFormatDesc">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
-                         <item row="7" column="0">
+                         <item row="5" column="0">
+                          <widget class="QStackedWidget" name="stackedWidget_8">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_18">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F18">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_1337">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.MuxerSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFMCfg</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_19">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F19">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_1338">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.MuxerSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceMCfg</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                          </widget>
+                         </item>
+                         <item row="5" column="1">
+                          <widget class="QStackedWidget" name="stackedWidget_9">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_20">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F20">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFMCfg"/>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_21">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F21">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFDeviceMCfg"/>
+			     </item>
+                            </layout>
+                           </widget>
+                          </widget>
+                         </item>
+                         <item row="6" column="0">
                           <widget class="QLabel" name="label_40">
                            <property name="text">
                             <string>Basic.Settings.Output.VideoBitrate</string>
@@ -2100,7 +2616,7 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="1">
+                         <item row="6" column="1">
                           <widget class="QSpinBox" name="advOutFFVBitrate">
                            <property name="minimum">
                             <number>0</number>
@@ -2113,7 +2629,17 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="1">
+                         <item row="7" column="0">
+                          <widget class="QLabel" name="label_63">
+                           <property name="text">
+                            <string>Basic.Settings.Output.Adv.FFmpeg.GOPSize</string>
+                           </property>
+                           <property name="buddy">
+                            <cstring>advOutFFVGOPSize</cstring>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="7" column="1">
                           <widget class="QSpinBox" name="advOutFFVGOPSize">
                            <property name="maximum">
                             <number>1000000000</number>
@@ -2124,16 +2650,6 @@
                           </widget>
                          </item>
                          <item row="8" column="0">
-                          <widget class="QLabel" name="label_63">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.GOPSize</string>
-                           </property>
-                           <property name="buddy">
-                            <cstring>advOutFFVGOPSize</cstring>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="9" column="0">
                           <widget class="QCheckBox" name="advOutFFUseRescale">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
@@ -2149,7 +2665,7 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="1">
+                         <item row="8" column="1">
                           <widget class="QComboBox" name="advOutFFRescale">
                            <property name="enabled">
                             <bool>false</bool>
@@ -2159,40 +2675,246 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="10" column="1">
+                         <item row="9" column="1">
                           <widget class="QCheckBox" name="advOutFFIgnoreCompat">
                            <property name="text">
                             <string>Basic.Settings.Output.Adv.FFmpeg.IgnoreCodecCompat</string>
                            </property>
                           </widget>
                          </item>
+                         <item row="10" column="0">
+                          <widget class="QStackedWidget" name="stackedWidget_10">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_22">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F22">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+			      <widget class="QLabel" name="label_37">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.VEncoder</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFVEncoder</cstring>
+                               </property>
+                              </widget>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_23">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F23">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_91">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.VEncoder</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceVEncoder</cstring>
+                               </property>
+                              </widget>
+			     </item>
+                            </layout>
+			   </widget>				   
+			  </widget>				  
+                         </item>
+                         <item row="10" column="1">
+                          <widget class="QStackedWidget" name="stackedWidget_11">
+                           <property name="currentIndex">
+                            <number>0</number>
+                           </property>
+                           <widget class="QWidget" name="page_24">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F24">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFVEncoder"/>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_25">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F25">
+                             <property name="spacing">
+                              <number>3</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFDeviceVEncoder"/>
+			     </item>
+                            </layout>
+			   </widget>				   
+			  </widget>				  
+                         </item>
                          <item row="11" column="0">
-                          <widget class="QLabel" name="label_37">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.VEncoder</string>
+                          <widget class="QStackedWidget" name="stackedWidget_12">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFVEncoder</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_26">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F26">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_38">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.VEncoderSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFVCfg</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+			   </widget>
+                           <widget class="QWidget" name="page_27">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F27">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_94">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.VEncoderSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceVCfg</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+			   </widget>
                           </widget>
                          </item>
                          <item row="11" column="1">
-                          <widget class="QComboBox" name="advOutFFVEncoder"/>
-                         </item>
-                         <item row="13" column="0">
-                          <widget class="QLabel" name="label_38">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.VEncoderSettings</string>
+                          <widget class="QStackedWidget" name="stackedWidget_13">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFVCfg</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_28">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F28">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFVCfg"/>
+                             </item>
+                            </layout>
+			   </widget>
+                           <widget class="QWidget" name="page_29">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F29">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFDeviceVCfg"/>
+                             </item>
+                            </layout>
+			   </widget>
                           </widget>
                          </item>
-                         <item row="13" column="1">
-                          <widget class="QLineEdit" name="advOutFFVCfg"/>
-                         </item>
-                         <item row="14" column="0">
+                         <item row="12" column="0">
                           <widget class="QLabel" name="label_41">
                            <property name="text">
                             <string>Basic.Settings.Output.AudioBitrate</string>
@@ -2202,7 +2924,7 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="14" column="1">
+                         <item row="12" column="1">
                           <widget class="QSpinBox" name="advOutFFABitrate">
                            <property name="minimum">
                             <number>32</number>
@@ -2218,14 +2940,14 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="15" column="0">
+                         <item row="13" column="0">
                           <widget class="QLabel" name="label_47">
                            <property name="text">
                             <string>Basic.Settings.Output.Adv.AudioTrack</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="15" column="1">
+                         <item row="13" column="1">
                           <widget class="QWidget" name="widget_10" native="true">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -2294,92 +3016,236 @@
                            </layout>
                           </widget>
                          </item>
-                         <item row="17" column="0">
-                          <widget class="QLabel" name="label_39">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.AEncoder</string>
+                         <item row="14" column="0">
+                          <widget class="QStackedWidget" name="stackedWidget_14">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFAEncoder</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_30">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F30">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_39">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.AEncoder</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFAEncoder</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_31">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F31">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_92">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.AEncoder</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceAEncoder</cstring>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
-                         <item row="17" column="1">
-                          <widget class="QComboBox" name="advOutFFAEncoder"/>
-                         </item>
-                         <item row="18" column="0">
-                          <widget class="QLabel" name="label_46">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.AEncoderSettings</string>
+                         <item row="14" column="1">
+                          <widget class="QStackedWidget" name="stackedWidget_15">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFACfg</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_32">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F32">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QComboBox" name="advOutFFAEncoder"/>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_33">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F33">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="advOutFFDeviceAEncoder"/>
+                             </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
-                         <item row="18" column="1">
-                          <widget class="QLineEdit" name="advOutFFACfg"/>
-                         </item>
-                         <item row="0" column="0">
-                          <widget class="QLabel" name="label_48">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
+                         <item row="15" column="0">
+                          <widget class="QStackedWidget" name="stackedWidget_16">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="minimumSize">
-                            <size>
-                             <width>170</width>
-                             <height>0</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.Type</string>
-                           </property>
-                           <property name="alignment">
-                            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                           </property>
-                           <property name="buddy">
-                            <cstring>advOutFFType</cstring>
-                           </property>
+                           <widget class="QWidget" name="page_34">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F34">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_46">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.AEncoderSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFACfg</cstring>
+                               </property>
+                              </widget>
+			     </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_35">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F35">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item> 
+                              <widget class="QLabel" name="label_96">
+                               <property name="text">
+                                <string>Basic.Settings.Output.Adv.FFmpeg.AEncoderSettings</string>
+                               </property>
+                               <property name="buddy">
+                                <cstring>advOutFFDeviceACfg</cstring>
+                               </property>
+                              </widget>
+			     </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
-                         <item row="0" column="1">
-                          <widget class="QComboBox" name="advOutFFType">
-                           <item>
-                            <property name="text">
-                             <string>Basic.Settings.Output.Adv.FFmpeg.Type.RecordToFile</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Basic.Settings.Output.Adv.FFmpeg.Type.URL</string>
-                            </property>
-                           </item>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
-                          <widget class="QLabel" name="label_1337">
-                           <property name="text">
-                            <string>Basic.Settings.Output.Adv.FFmpeg.MuxerSettings</string>
+                         <item row="15" column="1">
+                          <widget class="QStackedWidget" name="stackedWidget_17">
+                           <property name="currentIndex">
+                            <number>0</number>
                            </property>
-                           <property name="buddy">
-                            <cstring>advOutFFMCfg</cstring>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="1">
-                          <widget class="QLineEdit" name="advOutFFMCfg"/>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QCheckBox" name="advOutFFNoSpace">
-                           <property name="text">
-                            <string>Basic.Settings.Output.NoSpaceFileName</string>
-                           </property>
-                           <property name="checked">
-                            <bool>true</bool>
-                           </property>
+                           <widget class="QWidget" name="page_36">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F36">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFACfg"/>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="page_37">
+                            <layout class="QHBoxLayout" name="horizontalLayout_F37">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <property name="leftMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="topMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="rightMargin">
+                              <number>0</number>
+                             </property>
+                             <property name="bottomMargin">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLineEdit" name="advOutFFDeviceACfg"/>
+                             </item>
+                            </layout>
+                           </widget>
                           </widget>
                          </item>
                         </layout>
@@ -4800,13 +5666,17 @@
   <tabstop>advOutFFPathBrowse</tabstop>
   <tabstop>advOutFFURL</tabstop>
   <tabstop>advOutFFFormat</tabstop>
+  <tabstop>advOutFFDeviceFormat</tabstop> 
+  <tabstop>advOutFFDeviceList</tabstop>
   <tabstop>advOutFFVBitrate</tabstop>
   <tabstop>advOutFFVGOPSize</tabstop>
   <tabstop>advOutFFUseRescale</tabstop>
   <tabstop>advOutFFRescale</tabstop>
   <tabstop>advOutFFIgnoreCompat</tabstop>
   <tabstop>advOutFFVEncoder</tabstop>
+  <tabstop>advOutFFDeviceVEncoder</tabstop>
   <tabstop>advOutFFVCfg</tabstop>
+  <tabstop>advOutFFDeviceVCfg</tabstop>
   <tabstop>advOutFFABitrate</tabstop>
   <tabstop>advOutFFTrack1</tabstop>
   <tabstop>advOutFFTrack2</tabstop>
@@ -4815,7 +5685,9 @@
   <tabstop>advOutFFTrack5</tabstop>
   <tabstop>advOutFFTrack6</tabstop>
   <tabstop>advOutFFAEncoder</tabstop>
+  <tabstop>advOutFFDeviceAEncoder</tabstop>
   <tabstop>advOutFFACfg</tabstop>
+  <tabstop>advOutFFDeviceACfg</tabstop>
   <tabstop>advOutFFType</tabstop>
   <tabstop>advOutFFMCfg</tabstop>
   <tabstop>advOutFFNoSpace</tabstop>
@@ -5076,6 +5948,22 @@
    <sender>advOutFFType</sender>
    <signal>currentIndexChanged(int)</signal>
    <receiver>stackedWidget_2</receiver>
+   <slot>setCurrentIndex(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>250</x>
+     <y>50</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>250</x>
+     <y>52</y>
+    </hint>
+   </hints>
+  </connection>
+ <connection>
+   <sender>advOutFFType</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>stackedWidget_3</receiver>
    <slot>setCurrentIndex(int)</slot>
    <hints>
     <hint type="sourcelabel">
