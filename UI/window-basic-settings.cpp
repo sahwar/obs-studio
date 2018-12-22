@@ -946,6 +946,7 @@ void OBSBasicSettings::LoadFFDevices(const ff_format_desc *formatDesc)
 
 void OBSBasicSettings::LoadFFDevicesByFormatName(const char *formatName)
 {
+	QString itemText;
 	ui->advOutFFDeviceList->blockSignals(true);
 	ui->advOutFFDeviceList->clear();
 	OBSFFDeviceDesc deviceDescs(ff_get_device_list(formatName));
@@ -956,7 +957,11 @@ void OBSBasicSettings::LoadFFDevicesByFormatName(const char *formatName)
 	while (device != nullptr) {
 		DeviceDesc deviceDesc(ff_device_desc_name(device),
 			ff_device_desc_long_name(device), device);
-		QString itemText(ff_device_desc_long_name(device));
+		if (ff_device_desc_long_name(device))
+			itemText = QString(ff_device_desc_long_name(device));
+		else
+			itemText = QString(ff_device_desc_name(device));
+
 		ui->advOutFFDeviceList->addItem(itemText,
 			qVariantFromValue(deviceDesc));
 
