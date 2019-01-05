@@ -22,7 +22,7 @@ set(DISABLE_UPDATE_MODULE TRUE CACHE BOOL "Disables building the update module")
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 set(CMAKE_AUTOMOC TRUE)
 
-find_package(FFmpeg REQUIRED COMPONENTS avcodec avutil avformat)
+find_package(FFmpeg REQUIRED COMPONENTS avcodec avdevice avutil avformat)
 
 if(APPLE)
 	find_package(Qt5MacExtras REQUIRED)
