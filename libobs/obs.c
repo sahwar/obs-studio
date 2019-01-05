@@ -1686,7 +1686,11 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data)
 	di_order = (int)obs_data_get_int(source_data, "deinterlace_field_order");
 	obs_source_set_deinterlace_field_order(source,
 			(enum obs_deinterlace_field_order)di_order);
-
+	if (strcmp(id, "browser_source") == 0 ||
+			strcmp(id, "ffmpeg_source") == 0 ||
+			strcmp(id, "vlc_source") == 0)
+		obs_data_set_default_int(source_data, "monitoring_type",
+				OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT);
 	monitoring_type = (int)obs_data_get_int(source_data, "monitoring_type");
 	obs_source_set_monitoring_type(source,
 			(enum obs_monitoring_type)monitoring_type);

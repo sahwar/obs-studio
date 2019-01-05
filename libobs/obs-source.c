@@ -172,6 +172,11 @@ bool obs_source_init(struct obs_source *source)
 		if (!obs_transition_init(source))
 			return false;
 	}
+	if (strcmp(source->info.id, "browser_source") == 0 ||
+			strcmp(source->info.id, "vlc_source") == 0 ||
+			strcmp(source->info.id, "ffmpeg_source") == 0)
+		obs_source_set_monitoring_type(source,
+				OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT);
 
 	source->control = bzalloc(sizeof(obs_weak_source_t));
 	source->deinterlace_top_first = true;
