@@ -101,6 +101,12 @@ QLabel#errorLabel {
     font-weight: bold;
 }
 
+/* Obs source label */
+
+OBSSourceLabel {
+    font-weight: bold;
+}
+
 * [themeID="warning"] {
     color: rgb(192, 128, 0);
     font-weight: bold;
@@ -140,4 +146,9 @@ QLabel#errorLabel {
 
 * [themeID="displayBackgroundColor"] {
     qproperty-displayBackgroundColor: rgb(76, 76, 76);
+}
+
+/* groupbox titles */
+QGroupBox {
+    font-weight: bold;
 }

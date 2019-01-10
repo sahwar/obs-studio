@@ -217,6 +217,7 @@ QGroupBox {
 	border-radius: 2px;
 	padding-top: 16px;
 	margin-top: 20px;
+	font-weight: bold;
 }
 
 QGroupBox::title {
@@ -1040,6 +1041,12 @@ QLabel#warningLabel {
 
 QLabel#errorLabel {
 	color: rgb(186, 45, 101); /* Dark Pink (Secondary Dark) */
+	font-weight: bold;
+}
+
+/* Obs source label */
+
+OBSSourceLabel {
 	font-weight: bold;
 }
 
