@@ -20,11 +20,18 @@
 		"release_time" : 49,
 		"output_gain" : 0.0
 	},
-	"ducking" : {
+	"ducking 1" : {
+		"ratio" : 32,
+		"threshold" : -32,
+		"attack_time" : 50,
+		"release_time" : 300,
+		"output_gain" : 0.0
+	},
+	"ducking 2" : {
 		"ratio" : 32,
 		"threshold" : -36,
 		"attack_time" : 100,
-		"release_time" : 500,
+		"release_time" : 300,
 		"output_gain" : 0.0
 	}
 }
